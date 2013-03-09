@@ -1,0 +1,25 @@
+CC = gcc
+CFLAGS = -Wall -pedantic -Wextra -g -std=gnu99 -O2
+
+objects = icp.o lower.o msgqueue.o network.o
+
+main:$(objects)
+	$(CC) -o lower $(objects) $(CFLAGS)
+
+lower.o:lower.c
+	$(CC) -c $^ $(CFLAGS)
+
+icp.o:icp.c
+	$(CC) -c $^ $(CFLAGS)
+
+msgqueue.o:msgqueue.c
+	$(CC) -c $^ $(CFLAGS)
+
+network.o:network.c
+	$(CC) -c $^ $(CFLAGS)
+
+.PHONY :clean
+
+clean:
+	rm lower $(objects)
+
