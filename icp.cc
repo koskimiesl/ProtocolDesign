@@ -15,9 +15,9 @@ ICP::ICP(){
     endbit = 0x00;            
     ackbit = 0x00;           
     cackbit = 0x00;          
-    size = 0x4849;    
-    seq = 0x4A4B;     
-    ack = 0x4C4D;     
+    size = 0x0000;    
+    seq = 0x4A4B; //must be random     
+    ack = 0x0000;     
 }
 
 ICP::ICP(unsigned char buff[]){
@@ -61,6 +61,24 @@ void ICP::toValues(){
 void ICP::getBinary(unsigned char buff[]){
 	for(int i =  0; i < 8 ;i++)
 		buff[i] = buffer[i];	
+}
+
+void ICP::assignSize(unsigned short s){
+	size = s;
+}
+void ICP::incrementSeq(){
+	seq++;
+}
+void ICP::assignAck(unsigned short a){
+	ack = a;
+}
+
+unsigned short ICP::getSeq(){
+	return seq;
+}
+
+unsigned char ICP::getStartBit(){
+	return startbit;
 }
 
 void ICP::showValues(){

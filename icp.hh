@@ -24,6 +24,11 @@ public:
 	void toBinary();
 	void toValues();
 	void getBinary(unsigned char buff[]);
+	void assignSize(unsigned short s);
+	unsigned char getStartBit();
+	void incrementSeq();
+	void assignAck(unsigned short a);
+	unsigned short getSeq();
 	void showValues();
 };
 
