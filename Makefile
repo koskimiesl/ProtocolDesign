@@ -1,8 +1,10 @@
 CC = g++
 CFLAGS = -std=c++98
 
-objects_client = comm.o icp.o client.o
-objects_server = comm.o icp.o server.o
+objects_client = comm.o icp.o client.o state.o helpers.o
+objects_server = comm.o icp.o server.o state.o helpers.o
+
+objects = comm.o icp.o state.o client.o server.o helpers.o
 
 PROGS = server client
 
@@ -26,9 +28,14 @@ comm.o:comm.cc
 icp.o:icp.cc
 	$(CC) -c $^ $(CFLAGS)
 
+state.o:state.cc
+	$(CC) -c $^ $(CFLAGS) 
+
+helpers.o:helpers.cc
+	$(CC) -c $^ $(CFLAGS)
+
 .PHONY :clean
 
 clean:
-	rm server client $(objects_server) $(objects_clients)
-
+	rm server client $(objects)
 
