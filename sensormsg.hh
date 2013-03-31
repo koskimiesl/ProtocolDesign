@@ -1,16 +1,23 @@
-#ifndef SENSORMSG_HH_
-#define SENSORMSG_HH_
+#ifndef SENSORMSG_HH
+#define SENSORMSG_HH
 
 #include <string>
 
 class SensorMessage
 {
-  public:
+public:
 	SensorMessage(const std::string message);
+	bool parse();
+	void printValues() const;
 	void printMessage() const;
 
-  private:
+private:
 	std::string message;
+	std::string deviceid;
+	std::string sensordata;
+	size_t seqno;
+	std::string timestamp; // string for now
+	size_t datasize;
 };
 
 #endif
