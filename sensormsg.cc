@@ -23,27 +23,47 @@ bool SensorMessage::parse()
 
 		std::string fieldname = message.substr(first + 1, second - first - 1);
 		std::string value = message.substr(third + 1, fourth - third - 1);
-		std::cout << "Got value: " << value << std::endl;
 		// input string stream to help with conversions to size_t
 		std::istringstream valueiss(value);
 
 		if (fieldname == "dev_id")
-			getline(valueiss, deviceid);
+		{
+			deviceid = value;
+			if (value.find("device") != std::string::npos)
+				sensortype = DEVICE;
+			else if (value.find("temp") != std::string::npos)
+				sensortype = TEMPERATURE;
+			else if (value.find("gps") != std::string::npos)
+				sensortype = GPS;
+			else if (value.find("camera") != std::string::npos)
+				sensortype = CAMERA;
+			else
+				return false;
+		}
 		else if (fieldname == "sensor_data")
-			getline(valueiss, sensordata);
+			sensordata = value;
 		else if (fieldname == "seq_no")
 			valueiss >> seqno;
 		else if (fieldname == "ts")
-			getline(valueiss, timestamp);
+			timestamp = value;
 		else if (fieldname == "data_size")
 			valueiss >> datasize;
 		else
 			return false;
-
 		continuepos = fourth + 1;
 		n++;
 	}
 	return true;
+}
+
+std::string SensorMessage::getDeviceID() const
+{
+	return deviceid;
+}
+
+SensorType SensorMessage::getSensorType() const
+{
+	return sensortype;
 }
 
 void SensorMessage::printValues() const
@@ -53,6 +73,7 @@ void SensorMessage::printValues() const
 	std::cout << "Seq no: " << seqno << std::endl;
 	std::cout << "Timestamp: " << timestamp << std::endl;
 	std::cout << "Data size: " << datasize << std::endl;
+	std::cout << "Sensor type: " << sensortype << std::endl;
 }
 
 void SensorMessage::printMessage() const

@@ -3,13 +3,24 @@
 
 #include <string>
 
+enum SensorType
+{
+	DEVICE,
+	TEMPERATURE,
+	GPS,
+	CAMERA
+};
+
 class SensorMessage
 {
 public:
 	SensorMessage(const std::string message);
 	bool parse();
+	std::string getDeviceID() const;
+	SensorType getSensorType() const;
 	void printValues() const;
 	void printMessage() const;
+	void logMessage() const;
 
 private:
 	std::string message;
@@ -18,6 +29,7 @@ private:
 	size_t seqno;
 	std::string timestamp; // string for now
 	size_t datasize;
+	enum SensorType sensortype;
 };
 
 #endif

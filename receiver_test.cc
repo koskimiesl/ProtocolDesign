@@ -1,21 +1,10 @@
 /* For testing to receive sensor messages */
 
-#include<iostream>
-#include<cstdlib>
-#include<sys/socket.h>
-#include<sys/types.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
-#include<netdb.h>
-#include"icp.hh"
 #include <cstring>
-#include <cerrno>
-#include <list>
-#include "state.hh"
+#include <iostream>
+#include <sys/socket.h>
 #include "helpers.hh"
-#include "comm.hh"
 #include "sensormsg.hh"
-#include <unistd.h>
 
 #define BUFF_SIZE 10000
 #define PORTLEN 10
@@ -46,7 +35,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if ((sfd = custom_server_socket(AF_INET, pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
+	if ((sfd = customServerSocket(AF_INET, pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
 		return -1;
 
 	std::cout << "Receiver started..." << std::endl;
@@ -62,9 +51,10 @@ int main(int argc, char *argv[])
 		{
 			std::cout << "Received " << rsize << " bytes:" << std::endl;
 			SensorMessage msg = SensorMessage((char*)buff);
-			std::cout << "Printing message:" << std::endl;
-			msg.printMessage();
-			//std::cout << buff << std::endl;
+			if (!msg.parse())
+				std::cerr << "Parsing failed" << std::endl;
+			else
+				msg.printValues();
 			memset(buff, 0, BUFF_SIZE);
 			bytes_recvd += rsize;
 			std::cout << "Bytes received so far: " << bytes_recvd << std::endl;
