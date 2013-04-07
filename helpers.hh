@@ -2,10 +2,23 @@
 #ifndef HELPERS_HH
 #define HELPERS_HH
 
-/* Prints custom message (msg) and error message corresponding to errno to stderr */
+#include <algorithm>
+#include <iostream>
+#include <cerrno>
+#include <cstring>
+#include<sys/socket.h>
+#include<sys/types.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<netdb.h>
+#include<iostream>
+
+#define BUFF_SIZE 1000
+#define PORTLEN 10
+#define vv
+
+// Print custom message (msg) and error message corresponding to errno to stderr
 void error(std::string msg);
 
-/* Returns an UDP socket useful for server */
-int customServerSocket(int family, const char port[]);
-
+int custom_socket(int family,const char port[]);
 #endif
