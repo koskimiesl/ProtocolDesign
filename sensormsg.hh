@@ -22,7 +22,6 @@ public:
 	void printMessage() const;
 	void logMessage() const;
 
-private:
 	std::string message;
 	std::string deviceid;
 	std::string sensordata;

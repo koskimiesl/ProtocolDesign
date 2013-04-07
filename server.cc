@@ -1,21 +1,12 @@
-#include<iostream>
-#include<cstdlib>
-#include<sys/socket.h>
-#include<sys/types.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
-#include<netdb.h>
 #include"server.hh"
-#include"icp.hh"
-#include<cstring>
-#include<cerrno>
-#include<list>
-#include"state.hh"
-#include"helpers.hh"
-#include"comm.hh"
-#include<unistd.h>
-#include<map>
-#include<iterator>
+
+// list of all connections from clients
+std::list<State> states;
+// list of clients and sensors subscribed to
+std::map< std::string,std::vector<std::string> > clients;
+// list of sensors and subscribed clients
+std::map< std::string,std::vector<std::string> > sensors;
+
 
 // Dummy function returning list of available sensors
 std::vector<std::string> getSensorsList(){
@@ -27,51 +18,6 @@ std::vector<std::string> getSensorsList(){
 	return sensorslist;
 }
 
-/* Returns socket. */
-
-int custom_socket(int family,const char port[]){
-	struct addrinfo hints,*result,*rp;
-	int sfd; //status
-	memset(&hints,0,sizeof(struct addrinfo));
-	hints.ai_family = family;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_flags = AI_PASSIVE;
-	hints.ai_protocol = 0;
-	hints.ai_canonname = NULL;
-	hints.ai_addr = NULL;
-	hints.ai_next = NULL;
-
-	if( (sfd = getaddrinfo(NULL,port,&hints,&result)) != 0){
-		std::cerr<<"getaddrinfo: "<<gai_strerror(sfd)<<std::endl;
-		sfd = -1;
-		return sfd;
-	}
-	for(rp = result;rp != NULL;rp = rp->ai_next){
-		if( (sfd = socket(rp->ai_family,rp->ai_socktype,rp->ai_protocol)) == -1){
-			error("socket");
-			continue;
-		}
-		if(bind(sfd,rp->ai_addr,rp->ai_addrlen) == -1){
-			error("bind");
-			close(sfd);		
-		}
-		else
-			break;
-	}	
-	if(rp == NULL){
-		std::cerr<<"Error,could not create socket"<<std::endl;
-		sfd = -1;
-	}
-	
-	freeaddrinfo(result);
-	
-	return sfd;
-}
-
-#define BUFF_SIZE 1000
-#define PORTLEN 10
-#define vv
-
 int main(int argc,char *argv[]){
 	char pport[PORTLEN],sport[PORTLEN];
 	unsigned char buff[BUFF_SIZE];	
@@ -81,15 +27,13 @@ int main(int argc,char *argv[]){
 	size_t buff_size;
 	std::string cmd;		
 	std::string misc;
+	int ret;
 
 	ICP icp;	
 	CommMessage text;
 	struct sockaddr addr;
 	len = sizeof(addr);
-	// list of all connections from clients
-	std::list<State> states;
-	// list of clients and subscribed sensors
-	std::map< std::string,std::vector<std::string> > clients;
+	
 	std::list<State>::iterator itr;
 	// Parse command line options
 	while( (opt = getopt(argc,argv, "s:p:")) != -1){
@@ -112,6 +56,19 @@ int main(int argc,char *argv[]){
 				return -1;		
 		}
 	}
+	
+	pthread_t thread;
+
+	// Starting publish thread
+	if( (ret = pthread_create(&thread, NULL, publishServer, (void *)&pport)) != 0)
+	{
+		#ifdef vv
+		std::cerr<<"Unable to create thread."<<std::endl;
+		#endif		
+		return -1;
+	}
+	std::cout<<"Server started ..."<<std::endl;
+	// Continue with subscribe thread
 	
 	if( (sfd = custom_socket(AF_INET,sport)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
 		return -1;
@@ -206,6 +163,7 @@ int main(int argc,char *argv[]){
 			// error,packets must be atleast 8 bytes
 			std::cout<<"Invalid UDP packet."<<std::endl;
 		}
-	}		
+	}
+			
 	return 0;
 }
