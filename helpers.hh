@@ -13,7 +13,7 @@
 #include<netdb.h>
 #include<iostream>
 
-#define BUFF_SIZE 1000
+#define BUFF_SIZE 10000 // big enough for camera sensor messages
 #define PORTLEN 10
 #define vv
 

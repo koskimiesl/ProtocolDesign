@@ -16,11 +16,8 @@ class SensorMessage
 public:
 	SensorMessage(const std::string message);
 	bool parse();
-	std::string getDeviceID() const;
-	SensorType getSensorType() const;
 	void printValues() const;
 	void printMessage() const;
-	void logMessage() const;
 
 	std::string message;
 	std::string deviceid;
