@@ -1,4 +1,5 @@
-#include"server.hh"
+#include "pubserver.hh"
+#include "server.hh"
 
 // list of all connections from clients
 std::list<State> states;
@@ -57,10 +58,10 @@ int main(int argc,char *argv[]){
 		}
 	}
 	
-	pthread_t thread;
+	pthread_t pubthread;
 
 	// Starting publish thread
-	if( (ret = pthread_create(&thread, NULL, publishServer, (void *)&pport)) != 0)
+	if( (ret = pthread_create(&pubthread, NULL, publishServer, (void *)&pport)) != 0)
 	{
 		#ifdef vv
 		std::cerr<<"Unable to create thread."<<std::endl;
@@ -69,7 +70,7 @@ int main(int argc,char *argv[]){
 	}
 	std::cout<<"Server started ..."<<std::endl;
 	// Continue with subscribe thread
-	
+
 	if( (sfd = custom_socket(AF_INET,sport)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
 		return -1;
 	
@@ -129,12 +130,12 @@ int main(int argc,char *argv[]){
 				// Text data			
 				memmove(buff,buff+8,icp.size);
 				memset(buff+icp.size,0,1000-icp.size);
-				text.updateMessage((char*)buff);
+				//text.updateMessage((char*)buff);
 				text.parse();
 				#ifdef vv
 				text.print();
 				#endif
-				cmd = text.getCommand();
+				//cmd = text.getCommand();
 				if(cmd == "LIST"){
 					// Create text message
 					text.updateServerID("server334");
@@ -164,6 +165,5 @@ int main(int argc,char *argv[]){
 			std::cout<<"Invalid UDP packet."<<std::endl;
 		}
 	}
-			
 	return 0;
 }

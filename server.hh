@@ -32,7 +32,4 @@ extern std::map< std::string,std::vector<std::string> > clients;
 // list of sensors and subscribed clients
 extern std::map< std::string,std::vector<std::string> > sensors;
 
-
-void * publishServer(void * arg);
-
 #endif

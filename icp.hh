@@ -5,7 +5,7 @@
 int whichEndian();
 
 class ICP{
-private:
+public:
 	//Individual
     unsigned char version;           /* Version: 2 bits */
     unsigned char startbit;          /* SB: 1 bit */ 
@@ -18,7 +18,7 @@ private:
 	//Binary
 	unsigned char buffer[8];
 	
-public:
+
 	ICP();
 	ICP(unsigned char buff[]);
 	void toBinary();
