@@ -2,10 +2,18 @@
 #define IPC_HH
 #include<cstring>
 #include<iostream>
+#define DEBUG
 int whichEndian();
 
 class ICP{
+	
 public:
+	ICP();
+	ICP(unsigned short s);
+	void toValues();
+	void toBinary();
+	void showValues();
+
 	//Individual
     unsigned char version;           /* Version: 2 bits */
     unsigned char startbit;          /* SB: 1 bit */ 
@@ -17,19 +25,7 @@ public:
     unsigned short ack;     		 /* Acknowledgement: 16 bits */
 	//Binary
 	unsigned char buffer[8];
-	
 
-	ICP();
-	ICP(unsigned char buff[]);
-	void toBinary();
-	void toValues();
-	void getBinary(unsigned char buff[]);
-	void assignSize(unsigned short s);
-	unsigned char getStartBit();
-	void incrementSeq();
-	void assignAck(unsigned short a);
-	unsigned short getSeq();
-	void showValues();
 };
 
 #endif

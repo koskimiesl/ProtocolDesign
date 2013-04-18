@@ -10,19 +10,24 @@ int whichEndian(){
 }
 
 ICP::ICP(){
+	version = 0x00;           
+    startbit = 0x00;          
+    endbit = 0x00;            
+    ackbit = 0x00;           
+    cackbit = 0x00;          
+    size = 0x0000;    
+    seq = 0x0000;    
+    ack = 0x0000;
+}
+ICP::ICP(unsigned short s){
 	version = 0x01;           
     startbit = 0x01;          
     endbit = 0x00;            
     ackbit = 0x00;           
     cackbit = 0x00;          
     size = 0x0000;    
-    seq = 0x4A4B; //must be random     
+    seq = s;     
     ack = 0x0000;     
-}
-
-ICP::ICP(unsigned char buff[]){
-	for(int i =  0; i < 8 ;i++)
-		buffer[i] = buff[i];	
 }
 
 void ICP::toBinary(){
@@ -56,29 +61,9 @@ void ICP::toValues(){
     ptr = (unsigned char *)&ack;
     *(ptr + whichEndian()) = buffer[6];
     *(ptr + 1 - whichEndian()) = buffer[7];
-}
-
-void ICP::getBinary(unsigned char buff[]){
-	for(int i =  0; i < 8 ;i++)
-		buff[i] = buffer[i];	
-}
-
-void ICP::assignSize(unsigned short s){
-	size = s;
-}
-void ICP::incrementSeq(){
-	seq++;
-}
-void ICP::assignAck(unsigned short a){
-	ack = a;
-}
-
-unsigned short ICP::getSeq(){
-	return seq;
-}
-
-unsigned char ICP::getStartBit(){
-	return startbit;
+	#ifdef DEBUG
+	//showValues();
+	#endif
 }
 
 void ICP::showValues(){

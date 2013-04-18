@@ -20,6 +20,6 @@
 // Print custom message (msg) and error message corresponding to errno to stderr
 void error(std::string msg);
 
-int custom_socket(int ,const char port);
+int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
 #endif
