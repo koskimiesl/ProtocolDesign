@@ -1,13 +1,13 @@
-#include "pubserver.hh"
-#include "server.hh"
+#include"server.hh"
 
-// list of all connections from clients
+// list of all connections from clients //make it pair
 std::list<State> states;
+std::map< std::string,State > tuple;
+
 // list of clients and sensors subscribed to
 std::map< std::string,std::vector<std::string> > clients;
 // list of sensors and subscribed clients
 std::map< std::string,std::vector<std::string> > sensors;
-
 
 // Dummy function returning list of available sensors
 std::vector<std::string> getSensorsList(){
@@ -17,6 +17,28 @@ std::vector<std::string> getSensorsList(){
 	sensorslist.push_back("Tem003");
 	sensorslist.push_back("SWT004");
 	return sensorslist;
+}
+
+// Append subscribed sensors to client
+void appendSubsSensorstoClient(std::string c,std::vector<std::string> s){
+	std::vector<std::string> t;	
+	if(clients.find(c) == clients.end()){
+		// first subscribtion request
+		clients.insert(std::pair< std::string,std::vector<std::string> >(c,s));
+	}
+	else{
+		// more subscribtion request,assuming no subscribtion for previously subscribed sensors
+		t = clients.find(c)->second;
+		std::copy(s.begin(),s.end(),t.end());
+		clients.erase(c);
+		clients.insert(std::pair< std::string,std::vector<std::string> >(c,t));
+	}
+	// just for now
+}
+
+// Remove unsubscribed sensors from client
+void removeUnSubsSensorsfromClient(std::string c,std::vector<std::string> s){
+	//TODO
 }
 
 int main(int argc,char *argv[]){
@@ -58,10 +80,10 @@ int main(int argc,char *argv[]){
 		}
 	}
 	
-	pthread_t pubthread;
+	pthread_t thread;
 
 	// Starting publish thread
-	if( (ret = pthread_create(&pubthread, NULL, publishServer, (void *)&pport)) != 0)
+	if( (ret = pthread_create(&thread, NULL, publishServer, (void *)&pport)) != 0)
 	{
 		#ifdef vv
 		std::cerr<<"Unable to create thread."<<std::endl;
@@ -70,7 +92,7 @@ int main(int argc,char *argv[]){
 	}
 	std::cout<<"Server started ..."<<std::endl;
 	// Continue with subscribe thread
-
+	
 	if( (sfd = custom_socket(AF_INET,sport)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
 		return -1;
 	
@@ -130,12 +152,12 @@ int main(int argc,char *argv[]){
 				// Text data			
 				memmove(buff,buff+8,icp.size);
 				memset(buff+icp.size,0,1000-icp.size);
-				//text.updateMessage((char*)buff);
+				text.updateMessage((char*)buff);
 				text.parse();
 				#ifdef vv
 				text.print();
 				#endif
-				//cmd = text.getCommand();
+				cmd = text.getCommand();
 				if(cmd == "LIST"){
 					// Create text message
 					text.updateServerID("server334");
@@ -156,6 +178,12 @@ int main(int argc,char *argv[]){
 					memcpy(buff,icp.buffer,8);
 					memcpy(buff+8,misc.c_str(),icp.size);
 				}
+				else if(cmd == "SUBSCRIBE"){
+					// make mapping of this clent to state (connection)
+					tuple.insert(std::pair<std::string,State>(text.getClientID(),*itr));
+					appendSubsSensorstoClient(text.getClientID(),text.getDeviceIDs());					
+					
+				}
 			}
 			if(buff_size != 0)		
 				sendto(sfd,(char*)buff,buff_size,0,&addr,len);					
@@ -165,5 +193,6 @@ int main(int argc,char *argv[]){
 			std::cout<<"Invalid UDP packet."<<std::endl;
 		}
 	}
+			
 	return 0;
 }

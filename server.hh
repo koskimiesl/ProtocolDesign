@@ -7,8 +7,11 @@
 #include<list>
 #include<map>
 #include<iterator>
-#include<unistd.h>
+#include<vector>
+#include<utility>
+#include<algorithm>
 
+#include<unistd.h>
 #include<sys/socket.h>
 #include<sys/types.h>
 #include<netinet/in.h>
@@ -22,8 +25,7 @@
 #include"comm.hh"
 #include"sensormsg.hh"
 
-#include<vector>
-#include<utility>
+#define vv
 
 // list of all connections from clients
 extern std::list<State> states;
@@ -31,5 +33,8 @@ extern std::list<State> states;
 extern std::map< std::string,std::vector<std::string> > clients;
 // list of sensors and subscribed clients
 extern std::map< std::string,std::vector<std::string> > sensors;
+
+
+void * publishServer(void * arg);
 
 #endif

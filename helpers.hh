@@ -13,12 +13,13 @@
 #include<netdb.h>
 #include<iostream>
 
-#define BUFF_SIZE 10000 // big enough for camera sensor messages
+#define BUFF_SIZE 1000
 #define PORTLEN 10
-#define vv
+//#define vv
 
 // Print custom message (msg) and error message corresponding to errno to stderr
 void error(std::string msg);
 
-int custom_socket(int family,const char port[]);
+int custom_socket(int ,const char port);
+int custom_socket_remote(const char [],const char [],struct sockaddr *);
 #endif

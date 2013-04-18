@@ -5,18 +5,13 @@ CommMessage::CommMessage(){
 	command = "";
 	clientID = "";
 	serverID = "";
-	version = "";
+	version = "1.0";
 	count = 0;
 	size = 0;
 }
 
-CommMessage::CommMessage(std::string message):message(message){
-	command = "";
-	clientID = "";
-	serverID = "";
-	version = "";
-	count = 0;
-	size = 0;
+void CommMessage::updateMessage(std::string msg){
+	message = msg;
 }
 
 bool CommMessage::parse(){
@@ -58,12 +53,43 @@ bool CommMessage::sanityCheck(){
 }
 
 void CommMessage::print(){
-	std::vector<std::string>::iterator itr;
-	std::cout<<"Command: "<<command<<std::endl<<"Version: "<<version<<std::endl<<"ClientId: "<<clientID<<std::endl \
+	//std::vector<std::string>::iterator itr;
+	//std::cout<<"Command: "<<command<<std::endl<<"Version: "<<version<<std::endl<<"ClientId: "<<clientID<<std::endl \
 	<<"ServerID: "<<serverID<<std::endl<<"Count: "<<count<<std::endl<<"Size: "<<size<<std::endl;
-	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
-		std::cout<<*itr<<std::endl;
+	//for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
+		//std::cout<<*itr<<std::endl;
+	std::cout<<message<<std::endl;
 }
+
+// Get
+std::string CommMessage::getCommand(){
+	return command;
+}
+
+std::string CommMessage::getVersion(){
+	return version;
+}
+
+std::string CommMessage::getClientID(){
+	return clientID;
+}
+
+std::string CommMessage::getServerID(){
+	return serverID;
+}
+
+size_t CommMessage::getCount(){
+	return count;
+}
+
+size_t CommMessage::getSize(){
+	return size;
+}
+
+std::vector<std::string> CommMessage::getDeviceIDs(){
+	return deviceIDs;
+}
+
 
 //Updates
 void CommMessage::updateVersion(std::string ver){
@@ -88,6 +114,7 @@ void CommMessage::updateSize(size_t s){
 
 void CommMessage::updateDeviceIDs(std::vector<std::string> dIDs){
 	std::vector<std::string>::iterator itr;
+	deviceIDs.clear();	
 	for(itr = dIDs.begin();itr != dIDs.end();itr++)
 		deviceIDs.push_back(*itr);
 }
@@ -98,6 +125,7 @@ std::string CommMessage::createListRequest(){
 	str = "LIST IoTPS\\"+version+"\r\nClientID: "+clientID+"\r\n\r\n";
 	return str;
 }
+
 std::string CommMessage::createSubsRequest(){
 	std::string str;
 	std::vector<std::string>::iterator itr;
@@ -109,6 +137,7 @@ std::string CommMessage::createSubsRequest(){
 	str+="ClientID: "+clientID+"\r\n\r\n";
 	return str;
 }
+
 std::string CommMessage::createUnsubsRequest(){
 	std::string str;
 	std::vector<std::string>::iterator itr;
@@ -125,9 +154,11 @@ std::string CommMessage::createUnsubsRequest(){
 //Good Replies
 std::string CommMessage::createListReply(){
 	std::string str;
-	std::stringstream ss;
-	ss >> size;
-	str = "OK IoTPS\\"+version+"\r\nSize: "+ss.str()+"\r\nServerID: "+serverID+"\r\n\r\n";
+	std::vector<std::string>::iterator itr;	
+	str = "OK IoTPS\\"+version+"\r\n";
+	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
+		str+="DeviceID: "+(*itr)+"\r\n";	
+	str += "ServerID: "+serverID+"\r\n\r\n";
 	return str;
 }
 std::string CommMessage::createSubscribeReply(){

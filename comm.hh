@@ -18,19 +18,28 @@ public:
 	bool parse();
 	bool sanityCheck();
 	void print();
-	//Requests
+	// Get
+	std::string getCommand();
+	std::string getVersion();
+	std::string getClientID();
+	std::string getServerID();
+	size_t getCount();
+	size_t getSize();
+	std::vector<std::string> getDeviceIDs();
+	// Requests
 	std::string createListRequest();
 	std::string createSubsRequest();
 	std::string createUnsubsRequest();
-	//Good Replies
+	// Good Replies
 	std::string createListReply();
 	std::string createSubscribeReply();
 	std::string createUnsubscribeReply();
 	std::string createUpdatesMessage();
-	//Bad Replies 
+	// Bad Replies 
 	std::string createErrorReply();
 	std::string createInvalidReply();
-	//Update members
+	// Update members
+	void updateMessage(std::string msg);
 	void updateVersion(std::string ver);
 	void updateClientID(std::string cID);
 	void updateServerID(std::string sID);

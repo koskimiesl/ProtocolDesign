@@ -1,20 +1,20 @@
 CC = g++
-CFLAGS = -std=c++98
+CFLAGS = -lncurses -std=c++98 -pthread
 
-objects_client = comm.o icp.o client.o state.o helpers.o
-objects_server = comm.o icp.o server.o state.o helpers.o pubserver.o sensormsg.o
+objects_client = comm.o icp.o state.o helpers.o client.o screen.o
+objects_server = comm.o icp.o state.o helpers.o pubserver.o sensormsg.o server.o 
 
-objects = comm.o icp.o state.o client.o server.o helpers.o pubserver.o sensormsg.o
+objects = comm.o icp.o state.o client.o server.o helpers.o pubserver.o sensormsg.o screen.o
 
 PROGS = server client
 
 all:$(PROGS)
 
 server:$(objects_server)
-	$(CC) $(CFLAGS) -pthread -o server $(objects_server)
+	$(CC) -o server $(objects_server) $(CFLAGS) 
 
 client:$(objects_client)
-	$(CC) $(CFLAGS) -o client $(objects_client)
+	$(CC) -o client $(objects_client) $(CFLAGS)
 
 server.o:server.cc
 	$(CC) -c $^ $(CFLAGS)
@@ -33,14 +33,18 @@ state.o:state.cc
 
 helpers.o:helpers.cc
 	$(CC) -c $^ $(CFLAGS)
-	
-pubserver.o:pubserver.cc
+
+publishServer.o:publishServer.cc
 	$(CC) -c $^ $(CFLAGS)
-	
+
 sensormsg.o:sensormsg.cc
+	$(CC) -c $^ $(CFLAGS)
+
+screen.o:screen.cc
 	$(CC) -c $^ $(CFLAGS)
 
 .PHONY :clean
 
 clean:
 	rm server client $(objects)
+
