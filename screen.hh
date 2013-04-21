@@ -9,30 +9,32 @@
 #include<iostream>
 #include<string>
 #include<sstream>
+
 class Screen{
 	public:
 	    Screen();
 	    ~Screen();
-	    void addList(std::vector<std::string> l);	
-	    void showOption();
-	    WINDOW * getIPWin();
+	    void addAList(std::vector<std::string> al); // available sensors
+		void addSList(std::vector<std::string> sl);	// subscribed sensors
+		std::vector<std::string> getSList();
+		std::vector<std::string> getUList();
+	   	WINDOW * getIPWin();
 	    void moveWinUp();
 	    void moveWinDown();
 	    void toggle();
 		void switchtab();
 		void status(const char []);
 	private:
-	    WINDOW * top;
-		WINDOW * h1;
-		WINDOW * h2;
-	    WINDOW * mf;
-	    WINDOW * ms;
-        WINDOW * bottom;
-		void showh12();
-	    size_t win;
-	    size_t cur;
+		// data
+	    WINDOW * top,* hdr0,* hdr1,* opt[2],* bottom;
+		size_t win[2];
+	    size_t cur[2];
 		size_t tab;
-	    std::map<std::string,bool> senlist;	
+		std::map<std::string,bool> sensors[2];
+		// functions
+		void showTop();
+		void showHeader();
+		void showOption();
 };
 
 #endif

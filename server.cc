@@ -1,77 +1,134 @@
 #include"server.hh"
 
-// list of all connections from clients //make it pair
-std::list<State> states;
-std::map< std::string,State > tuple;
+// we may need r/w lock to sync r/w between two threads 
+// stores all information about connections
+std::vector<State> states;
 
-// list of clients and sensors subscribed to
-std::map< std::string,std::vector<std::string> > clients;
-// list of sensors and subscribed clients
-std::map< std::string,std::vector<std::string> > sensors;
+// handles binary protocol
+void * lower(void * arg){
+	unsigned char buff[BUFF_SIZE];	
+	struct sockaddr addr;	
+	ICP icp;	
+	size_t rsize;
+	fd_set rfds;	
+	int sfd;
+	int ret;	
+	socklen_t len;
+	struct timespec t;
+	t.tv_sec = 1;
+	t.tv_nsec = 0;
+	len = sizeof(addr);
 
-// Dummy function returning list of available sensors
-std::vector<std::string> getSensorsList(){
-	std::vector<std::string> sensorslist;
-	sensorslist.push_back("GPS001");
-	sensorslist.push_back("Cam002");
-	sensorslist.push_back("Tem003");
-	sensorslist.push_back("SWT004");
-	return sensorslist;
-}
+	std::vector<State>::iterator itr;
 
-// Append subscribed sensors to client
-void appendSubsSensorstoClient(std::string c,std::vector<std::string> s){
-	std::vector<std::string> t;	
-	if(clients.find(c) == clients.end()){
-		// first subscribtion request
-		clients.insert(std::pair< std::string,std::vector<std::string> >(c,s));
+
+	if( (sfd = custom_socket(AF_INET,(char *)arg)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
+		pthread_exit(NULL);
+
+	while(1){
+		FD_ZERO(&rfds);
+		FD_SET(sfd,&rfds);
+		if( (ret = pselect(sfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
+			continue;
+		}
+		if(FD_ISSET(sfd,&rfds)){
+			if( (rsize = recvfrom(sfd,(char*)buff,BUFF_SIZE,0,&addr,&len)) == -1){
+				continue;
+			}
+			else if(rsize >= 8){
+				memcpy(icp.buffer,buff,8);
+				icp.toValues();
+				if(icp.startbit == 0x01){								
+					State state;
+					state.status = CT;
+					state.ack = icp.seq;
+					memcpy(&state.addr,&addr,len);
+					state.len = len;
+					states.push_back(state);
+					// Update
+					icp.startbit = 0x01;
+					icp.endbit = 0x00;
+					icp.ackbit = 0x01;
+					icp.cackbit = 0x01;
+					icp.size = 0x0000;
+					icp.seq = state.seq;
+					icp.ack = state.ack;
+					icp.toBinary();		
+					memcpy(buff,icp.buffer,8);
+					// send packet
+					sendto(sfd,(char*)buff,8,0,&addr,len);		
+				}
+				else if(icp.endbit == 0x01){
+					
+				}
+				else if(icp.size != 0){
+					for (itr = states.begin();itr != states.end();itr++){
+						if(itr->isEqual(&addr)){				
+							break;	
+						}		
+					}	
+					// Update state
+					(*itr).ack = icp.seq;
+					(*itr).seq++;
+					memmove(buff,buff+8,icp.size);
+					memset(buff+icp.size,0,1000-icp.size);	
+					std::string str((char*)buff);		
+					(*itr).incoming.push(str);
+				}	
+			}
+		}
+		for (itr = states.begin();itr != states.end();itr++){
+			while((*itr).outgoing.size()){
+				std::string str = (*itr).outgoing.front();
+				(*itr).outgoing.pop();
+				icp.size = str.size();
+				icp.startbit = 0x00;
+				icp.endbit == 0x00;
+				icp.ackbit = 0x01; //read from state
+				icp.cackbit = 0x01; //read from state
+				icp.seq = (*itr).seq;
+				icp.ack = (*itr).ack;
+				icp.toBinary();
+				// copy to buffer
+				memcpy(buff,icp.buffer,8);
+				memcpy(buff+8,str.c_str(),icp.size);
+				// send packet
+				sendto(sfd,(char*)buff,8+icp.size,0,&(*itr).addr,(*itr).len);			
+			}	
+		}	
 	}
-	else{
-		// more subscribtion request,assuming no subscribtion for previously subscribed sensors
-		t = clients.find(c)->second;
-		std::copy(s.begin(),s.end(),t.end());
-		clients.erase(c);
-		clients.insert(std::pair< std::string,std::vector<std::string> >(c,t));
-	}
-	// just for now
 }
 
-// Remove unsubscribed sensors from client
-void removeUnSubsSensorsfromClient(std::string c,std::vector<std::string> s){
-	//TODO
-}
-
+// main thread,handles server (publish and subscribe)
 int main(int argc,char *argv[]){
 	char pport[PORTLEN],sport[PORTLEN];
-	unsigned char buff[BUFF_SIZE];	
-	int sfd,opt; //socket fd
-	socklen_t len;
-	size_t rsize;
-	size_t buff_size;
-	std::string cmd;		
-	std::string misc;
-	int ret;
-
-	ICP icp;	
-	CommMessage text;
+	unsigned char buff[BUFF_SIZE];
 	struct sockaddr addr;
-	len = sizeof(addr);
-	
-	std::list<State>::iterator itr;
+	std::vector<std::string> sensors;
+	socklen_t len;	
+	int opt;
+	int ret;
+	int pfd;
+	fd_set rfds;
+	size_t rsize;
+	std::string str;
+	pthread_t thread;
+	CommMessage text;
+	std::string cmd;
+	struct timespec t;
+	t.tv_sec = 1;
+	t.tv_nsec = 0;
+	//
+	len = sizeof(struct sockaddr);	
+
 	// Parse command line options
 	while( (opt = getopt(argc,argv, "s:p:")) != -1){
 		switch(opt){
 			case 's':
 				strncpy(sport,optarg,PORTLEN);
-				#ifdef vv
-				std::cout<<"Subscribe Port: "<<sport<<std::endl;
-				#endif
 				break;
 			case 'p':
 				strncpy(pport,optarg,PORTLEN);
-				#ifdef vv
-				std::cout<<"Publish Port: "<<pport<<std::endl;
-				#endif
 				break;
 			case '?':
 				return -1;
@@ -79,120 +136,61 @@ int main(int argc,char *argv[]){
 				return -1;		
 		}
 	}
-	
-	pthread_t thread;
 
-	// Starting publish thread
-	if( (ret = pthread_create(&thread, NULL, publishServer, (void *)&pport)) != 0)
-	{
-		#ifdef vv
-		std::cerr<<"Unable to create thread."<<std::endl;
-		#endif		
+	// starting thread to handle data exchange(lower/binary)
+	if( (ret = pthread_create(&thread, NULL, lower, (void *)&sport)) != 0)
 		return -1;
-	}
-	std::cout<<"Server started ..."<<std::endl;
-	// Continue with subscribe thread
-	
-	if( (sfd = custom_socket(AF_INET,sport)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
+
+	// publish socket
+	if ((pfd = custom_socket(AF_INET,pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
 		return -1;
 	
-	std::cout<<"Server started ..."<<std::endl;		
+	std::vector<State>::iterator itr;
 	while(1){
-		if( (rsize = recvfrom(sfd,(char*)buff,BUFF_SIZE,0,&addr,&len)) == -1){
-			error("recvfrom");		
+		FD_ZERO(&rfds);
+		FD_SET(pfd,&rfds);
+		// data from sensors
+		if( (ret = pselect(pfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
 			continue;
 		}
-		else if(rsize >= 8){
-			#ifdef vv
-			std::cout<<"Packets"<<std::endl;
-			#endif
-			memcpy(icp.buffer,buff,8);
-			icp.toValues();
-			buff_size = 0;
-			if(icp.startbit == 0x01){
-				#ifdef vv
-				std::cout<<"Connect"<<std::endl;
-				#endif
-				State state;
-				state.status = CT;
-				state.ack = icp.seq;
-				memcpy(&state.addr,&addr,len);
-				state.len = len;
-				states.push_back(state);
-				// Update				
-				icp.startbit = 0x01;
-				icp.endbit = 0x00;
-				icp.ackbit = 0x01;
-				icp.cackbit = 0x01;
-				icp.size = 0x0000;
-				icp.seq = state.seq;
-				icp.ack = state.ack;
-				icp.toBinary();
-				buff_size = 8;
-				memcpy(buff,icp.buffer,buff_size);
+		if(FD_ISSET(pfd,&rfds)){
+			if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
+			{	
+				continue;
 			}
-			else if(icp.endbit == 0x01){
-				#ifdef vv
-				std::cout<<"Close"<<std::endl;
-				#endif			
-			}
-			else if(icp.size != 0){
-				#ifdef vv
-				std::cout<<"Application data"<<std::endl;
-				#endif
-				// Obtaing "State" from list states
-				for (itr = states.begin();itr != states.end();itr++){
-					if(itr->isEqual(&addr)){
-						std::cout<<"Found"<<std::endl;					
-						break;	
-					}		
+			else{
+				SensorMessage msg = SensorMessage((char*)buff);
+				if (!msg.parse())
+					continue;
+				else{
+					if(std::find(sensors.begin(),sensors.end(),msg.deviceid) == sensors.end()){
+						sensors.push_back(msg.deviceid);
+					}				
 				}
-				// Update state
-				(*itr).ack = icp.seq;
-				// Text data			
-				memmove(buff,buff+8,icp.size);
-				memset(buff+icp.size,0,1000-icp.size);
-				text.updateMessage((char*)buff);
-				text.parse();
-				#ifdef vv
+			}
+		}
+		// data from lower/binary layer
+		for (itr = states.begin();itr != states.end();itr++){
+			while((*itr).incoming.size()){
+				text.updateMessage((*itr).incoming.front());
 				text.print();
-				#endif
+				(*itr).incoming.pop();
+				text.parse();
 				cmd = text.getCommand();
 				if(cmd == "LIST"){
 					// Create text message
 					text.updateServerID("server334");
-					text.updateDeviceIDs(getSensorsList());
-					misc = text.createListReply();
-					// Create binary message
-					(*itr).seq++;
-					icp.startbit = 0x00;
-					icp.endbit = 0x00;
-					icp.ackbit = 0x01;
-					icp.cackbit = 0x01;
-					icp.size = misc.size();
-					icp.seq = (*itr).seq;
-					icp.ack = (*itr).ack;
-					icp.toBinary();
-					buff_size = 8 + icp.size;
-					// copy to buffer
-					memcpy(buff,icp.buffer,8);
-					memcpy(buff+8,misc.c_str(),icp.size);
+					text.updateDeviceIDs(sensors);
+					str = text.createListReply();
+					(*itr).outgoing.push(str);
 				}
 				else if(cmd == "SUBSCRIBE"){
-					// make mapping of this clent to state (connection)
-					tuple.insert(std::pair<std::string,State>(text.getClientID(),*itr));
-					appendSubsSensorstoClient(text.getClientID(),text.getDeviceIDs());					
-					
 				}
-			}
-			if(buff_size != 0)		
-				sendto(sfd,(char*)buff,buff_size,0,&addr,len);					
-		}
-		else{
-			// error,packets must be atleast 8 bytes
-			std::cout<<"Invalid UDP packet."<<std::endl;
-		}
+				else if(cmd == "UNSUBSCRIBE"){
+				}							
+			}	
+		}			
 	}
-			
+
 	return 0;
 }

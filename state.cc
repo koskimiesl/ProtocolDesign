@@ -8,8 +8,6 @@ State::State(){
 }
 
 bool State::isEqual(struct sockaddr *a){
-	if(memcmp(a,&addr,sizeof(struct sockaddr)) == 0)
-		return true;
-	return false;
+	return (memcmp(a,&addr,sizeof(struct sockaddr)) == 0);
 }
 

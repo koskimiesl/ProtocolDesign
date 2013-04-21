@@ -17,7 +17,6 @@ void *lower(void * arg){
 	int sfd;
 	int ret;
 	size_t rsize;
-	size_t buff_size;
 	socklen_t len;
 	unsigned char buff[BUFF_SIZE];
 	fd_set rfds;	
@@ -57,8 +56,8 @@ void *lower(void * arg){
 					// Update state 
 					state.status = CT;
 					state.ack = icp.seq;
-					state.seq++;
 					// Update
+					state.seq++;
 					icp.startbit = 0x00;
 					icp.endbit = 0x00;
 					icp.ackbit = 0x01;
@@ -66,12 +65,15 @@ void *lower(void * arg){
 					icp.seq = state.seq;
 					icp.ack = state.ack;			
 					icp.toBinary();
-					buff_size = 8;
-					memcpy(buff,icp.buffer,buff_size);
+					memcpy(buff,icp.buffer,8);
+					// send packet
+					sendto(sfd,(char*)buff,8,0,&d_addr,sizeof(d_addr));
 				}
 				else if(icp.endbit == 0x01 && state.status == CT){
 				}
-				else if(icp.size != 0){					
+				else if(icp.size != 0){	
+					// Update state
+					state.ack = icp.seq;				
 					memmove(buff,buff+8,icp.size);
 					memset(buff+icp.size,0,1000-icp.size);	
 					std::string str((char*)buff);		
@@ -108,6 +110,8 @@ int main(int argc,char *argv[]){
 	Screen scr;
 	std::string cmd;
 	std::vector<std::string> list;
+	std::vector<std::string> slist;
+	std::vector<std::string> ulist;	
 	struct address adr;
 	enum REQ req;
 	pthread_t thread;
@@ -164,6 +168,26 @@ int main(int argc,char *argv[]){
 			scr.status("List request sent.");
 			req = LIST;
 		}
+		else if(ch == 'S' || ch == 's'){
+			text.updateClientID("abc123");
+			slist = scr.getSList();
+			text.updateDeviceIDs(slist);
+			text.updateCount(slist.size());
+			std::string msg = text.createSubsRequest();
+			outgoing.push(msg);
+			scr.status("Subs request sent.");
+			req = SUBS;
+		}
+		else if(ch == 'U' || ch == 'u'){
+			text.updateClientID("abc123");
+			ulist = scr.getUList();
+			text.updateDeviceIDs(ulist);
+			text.updateCount(ulist.size());
+			std::string msg = text.createUnsubsRequest();
+			outgoing.push(msg);
+			scr.status("Unsubs request sent.");
+			req = UNSUBS;
+		}
 		// data from lower layer
 		while(incoming.size()){
 			text.updateMessage(incoming.front());
@@ -172,15 +196,24 @@ int main(int argc,char *argv[]){
 			cmd = text.getCommand();
 			if(cmd == "OK" && req == LIST){
 				list = text.getDeviceIDs();
-				scr.addList(list);
-				scr.status("List retrived.Select and press 'enter' to subscribe.");
+				scr.addAList(list);
+				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 				req = NONE;
 			}
-			else if(cmd == "OK" && req == SUBS({
+			else if(cmd == "OK" && req == SUBS){
+				//TODO
+				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+				req = NONE;			
 			}
 			else if(cmd == "OK" && req == UNSUBS){
+				//TODO
+				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+				req = NONE;			
 			} 
 			else if(cmd == "UPDATE"){
+				//TODO
+				scr.status("Updates.");
+				req = NONE;			
 			}
 		}
 		ch = 0;					

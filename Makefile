@@ -2,9 +2,9 @@ CC = g++
 CFLAGS = -lncurses -std=c++98 -pthread
 
 objects_client = comm.o icp.o state.o helpers.o client.o screen.o
-objects_server = comm.o icp.o state.o helpers.o pubserver.o sensormsg.o server.o 
+objects_server = comm.o icp.o state.o helpers.o sensormsg.o server.o 
 
-objects = comm.o icp.o state.o client.o server.o helpers.o pubserver.o sensormsg.o screen.o
+objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o
 
 PROGS = server client
 
@@ -32,9 +32,6 @@ state.o:state.cc
 	$(CC) -c $^ $(CFLAGS) 
 
 helpers.o:helpers.cc
-	$(CC) -c $^ $(CFLAGS)
-
-publishServer.o:publishServer.cc
 	$(CC) -c $^ $(CFLAGS)
 
 sensormsg.o:sensormsg.cc

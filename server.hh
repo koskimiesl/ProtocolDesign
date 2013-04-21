@@ -5,11 +5,11 @@
 #include<cstring>
 #include<cerrno>
 #include<list>
-#include<map>
 #include<iterator>
 #include<vector>
 #include<utility>
 #include<algorithm>
+#include<queue>
 
 #include<unistd.h>
 #include<sys/socket.h>
@@ -18,6 +18,8 @@
 #include<arpa/inet.h>
 #include<netdb.h>
 #include<pthread.h>
+#define vv
+#define DEBUG
 
 #include"icp.hh"
 #include"state.hh"
@@ -25,16 +27,5 @@
 #include"comm.hh"
 #include"sensormsg.hh"
 
-#define vv
-
-// list of all connections from clients
-extern std::list<State> states;
-// list of clients and sensors subscribed to
-extern std::map< std::string,std::vector<std::string> > clients;
-// list of sensors and subscribed clients
-extern std::map< std::string,std::vector<std::string> > sensors;
-
-
-void * publishServer(void * arg);
 
 #endif
