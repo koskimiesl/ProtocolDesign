@@ -62,7 +62,7 @@ void ICP::toValues(){
     *(ptr + whichEndian()) = buffer[6];
     *(ptr + 1 - whichEndian()) = buffer[7];
 	#ifdef DEBUG
-	//showValues();
+	showValues();
 	#endif
 }
 

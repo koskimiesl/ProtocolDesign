@@ -16,6 +16,7 @@ void CommMessage::updateMessage(std::string msg){
 
 bool CommMessage::parse(){
 	char tempa[30],tempb[30];
+	deviceIDs.clear();
 	std::stringstream ss(message);
 	std::string line;
 	while(std::getline(ss,line)){
@@ -130,7 +131,7 @@ std::string CommMessage::createSubsRequest(){
 	std::string str;
 	std::vector<std::string>::iterator itr;
 	std::stringstream cc;
-	cc >> count;	
+	cc << count;	
 	str = "SUBSCRIBE IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";
@@ -142,7 +143,7 @@ std::string CommMessage::createUnsubsRequest(){
 	std::string str;
 	std::vector<std::string>::iterator itr;
 	std::stringstream cc;
-	cc >> count;	
+	cc << count;	
 	str = "UNSUBSCRIBE IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";
@@ -161,35 +162,38 @@ std::string CommMessage::createListReply(){
 	str += "ServerID: "+serverID+"\r\n\r\n";
 	return str;
 }
+
 std::string CommMessage::createSubscribeReply(){
 	std::string str;
 	std::stringstream ss,cc;
-	ss >> size;
-	cc >> count;
+	ss << size;
+	cc << count;
 	std::vector<std::string>::iterator itr;	
-	str = "OK IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\nSize: "+ss.str()+"\r\n";
-	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
-		str+="DeviceID: "+(*itr)+"\r\n";
-	str+="ServerID: "+serverID+"\r\n\r\n";
-	return str;
-}
-std::string CommMessage::createUnsubscribeReply(){
-	std::string str;
-	std::vector<std::string>::iterator itr;	
-	std::stringstream cc;
- 	cc >> count;
 	str = "OK IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";
 	str+="ServerID: "+serverID+"\r\n\r\n";
 	return str;
 }
+
+std::string CommMessage::createUnsubscribeReply(){
+	std::string str;
+	std::vector<std::string>::iterator itr;	
+	std::stringstream cc;
+ 	cc << count;
+	str = "OK IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\n";
+	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
+		str+="DeviceID: "+(*itr)+"\r\n";
+	str+="ServerID: "+serverID+"\r\n\r\n";
+	return str;
+}
+
 std::string CommMessage::createUpdatesMessage(){
 	std::string str;
 	std::vector<std::string>::iterator itr;	
 	std::stringstream ss,cc;
-	ss >> size;
-	cc >> count;
+	ss << size;
+	cc << count;
 	str = "UPDATES IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\nSize: "+ss.str()+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";

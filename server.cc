@@ -1,124 +1,32 @@
+/* IoTPS Server */
 #include"server.hh"
 
-// we may need r/w lock to sync r/w between two threads 
-// stores all information about connections
-std::vector<State> states;
-
-// handles binary protocol
-void * lower(void * arg){
-	unsigned char buff[BUFF_SIZE];	
-	struct sockaddr addr;	
-	ICP icp;	
-	size_t rsize;
-	fd_set rfds;	
-	int sfd;
-	int ret;	
-	socklen_t len;
-	struct timespec t;
-	t.tv_sec = 1;
-	t.tv_nsec = 0;
-	len = sizeof(addr);
-
-	std::vector<State>::iterator itr;
-
-
-	if( (sfd = custom_socket(AF_INET,(char *)arg)) == -1) //AF_INET,AF_INET6 or AF_UNSPEC
-		pthread_exit(NULL);
-
-	while(1){
-		FD_ZERO(&rfds);
-		FD_SET(sfd,&rfds);
-		if( (ret = pselect(sfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
-			continue;
-		}
-		if(FD_ISSET(sfd,&rfds)){
-			if( (rsize = recvfrom(sfd,(char*)buff,BUFF_SIZE,0,&addr,&len)) == -1){
-				continue;
-			}
-			else if(rsize >= 8){
-				memcpy(icp.buffer,buff,8);
-				icp.toValues();
-				if(icp.startbit == 0x01){								
-					State state;
-					state.status = CT;
-					state.ack = icp.seq;
-					memcpy(&state.addr,&addr,len);
-					state.len = len;
-					states.push_back(state);
-					// Update
-					icp.startbit = 0x01;
-					icp.endbit = 0x00;
-					icp.ackbit = 0x01;
-					icp.cackbit = 0x01;
-					icp.size = 0x0000;
-					icp.seq = state.seq;
-					icp.ack = state.ack;
-					icp.toBinary();		
-					memcpy(buff,icp.buffer,8);
-					// send packet
-					sendto(sfd,(char*)buff,8,0,&addr,len);		
-				}
-				else if(icp.endbit == 0x01){
-					
-				}
-				else if(icp.size != 0){
-					for (itr = states.begin();itr != states.end();itr++){
-						if(itr->isEqual(&addr)){				
-							break;	
-						}		
-					}	
-					// Update state
-					(*itr).ack = icp.seq;
-					(*itr).seq++;
-					memmove(buff,buff+8,icp.size);
-					memset(buff+icp.size,0,1000-icp.size);	
-					std::string str((char*)buff);		
-					(*itr).incoming.push(str);
-				}	
-			}
-		}
-		for (itr = states.begin();itr != states.end();itr++){
-			while((*itr).outgoing.size()){
-				std::string str = (*itr).outgoing.front();
-				(*itr).outgoing.pop();
-				icp.size = str.size();
-				icp.startbit = 0x00;
-				icp.endbit == 0x00;
-				icp.ackbit = 0x01; //read from state
-				icp.cackbit = 0x01; //read from state
-				icp.seq = (*itr).seq;
-				icp.ack = (*itr).ack;
-				icp.toBinary();
-				// copy to buffer
-				memcpy(buff,icp.buffer,8);
-				memcpy(buff+8,str.c_str(),icp.size);
-				// send packet
-				sendto(sfd,(char*)buff,8+icp.size,0,&(*itr).addr,(*itr).len);			
-			}	
-		}	
-	}
-}
-
-// main thread,handles server (publish and subscribe)
 int main(int argc,char *argv[]){
+	std::vector<std::string> sensors;
 	char pport[PORTLEN],sport[PORTLEN];
 	unsigned char buff[BUFF_SIZE];
-	struct sockaddr addr;
-	std::vector<std::string> sensors;
+	unsigned char obuff[BUFF_SIZE];
 	socklen_t len;	
 	int opt;
 	int ret;
-	int pfd;
-	fd_set rfds;
-	size_t rsize;
+	int pfd,sfd;
+	int temp;
+	int maxfd;	
+	int length;	
+	size_t rsize;	
+	pid_t pid;
+	fd_set rfds;	
+	std::vector<int> fds;	
 	std::string str;
-	pthread_t thread;
 	CommMessage text;
 	std::string cmd;
+	std::map< int,std::vector<std::string> > subs;
+	std::map< std::string,std::vector<int> > list;
+	struct sockaddr addr;
+	struct sockaddr_un local;	
 	struct timespec t;
 	t.tv_sec = 1;
 	t.tv_nsec = 0;
-	//
 	len = sizeof(struct sockaddr);	
 
 	// Parse command line options
@@ -137,60 +45,139 @@ int main(int argc,char *argv[]){
 		}
 	}
 
-	// starting thread to handle data exchange(lower/binary)
-	if( (ret = pthread_create(&thread, NULL, lower, (void *)&sport)) != 0)
+	if( (pid = fork()) < 0){
+		perror("fork");
 		return -1;
-
-	// publish socket
+	}
+	else if(pid == 0){
+		if(execl("serverb",sport,(void *)0) == -1){
+			perror("execl");
+			return -1;		
+		}
+	}
+	
+	// create publish socket
 	if ((pfd = custom_socket(AF_INET,pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
 		return -1;
+
+	memset(&local,0,sizeof(struct sockaddr_un));
+		
+	if( (sfd = socket(AF_UNIX,SOCK_STREAM,0)) == -1)
+		perror("socket");
 	
-	std::vector<State>::iterator itr;
+	local.sun_family = AF_UNIX;
+	strcpy(local.sun_path, SOCK_PATH);
+	unlink(local.sun_path);
+	length = strlen(local.sun_path) + sizeof(local.sun_family);
+
+	if( (bind(sfd,(struct sockaddr *)&local,length)) == -1)
+		perror("bind");
+	if( (listen(sfd,5)) == -1)
+		return -1;
+
+	#ifdef vv
+	std::cout<<"Server started."<<std::endl;
+	#endif
+
+	fds.push_back(pfd);
+	fds.push_back(sfd);
 	while(1){
-		FD_ZERO(&rfds);
-		FD_SET(pfd,&rfds);
+		FD_ZERO(&rfds);	
+		for(size_t c = 0;c < fds.size();c++)
+			FD_SET(fds[c],&rfds);
+		std::sort(fds.begin(),fds.end());
+		maxfd = fds[fds.size()-1] + 1; //check here
 		// data from sensors
-		if( (ret = pselect(pfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
+		if( (ret = pselect(maxfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
 			continue;
 		}
-		if(FD_ISSET(pfd,&rfds)){
-			if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
-			{	
-				continue;
-			}
-			else{
-				SensorMessage msg = SensorMessage((char*)buff);
-				if (!msg.parse())
-					continue;
-				else{
-					if(std::find(sensors.begin(),sensors.end(),msg.deviceid) == sensors.end()){
-						sensors.push_back(msg.deviceid);
-					}				
+		for(size_t c = 0;c < fds.size();c++){
+			if(FD_ISSET(fds[c],&rfds)){
+				if(fds[c] == pfd){
+					if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
+					{	
+						continue;
+					}
+					else {
+						SensorMessage msg = SensorMessage((char*)buff);
+						if (!msg.parse())
+							continue;
+						else{
+							if(std::find(sensors.begin(),sensors.end(),msg.deviceid) == sensors.end()){
+								sensors.push_back(msg.deviceid);
+							}
+							else {
+								std::vector<int> t = list.find(msg.deviceid)->second;
+								std::cout<<t.size()<<std::endl;
+								for(std::vector<int>::iterator itr = t.begin();itr != t.end();itr++){
+									text.updateServerID("server334");
+									text.updateCount(1);
+									text.updateSize(rsize);
+									std::vector<std::string> tt;
+									tt.push_back(msg.deviceid);
+									text.updateDeviceIDs(tt);
+									str = text.createUpdatesMessage();
+									std::cout<<str<<std::endl;
+									memcpy((char *)obuff,str.c_str(),str.size());
+									memcpy((char *)obuff + str.size(),buff,rsize);				
+									send((*itr),(char*)obuff,rsize+str.size(),0);
+									std::cout<<obuff<<std::endl;
+								}
+							}
+						}					
+					}
 				}
-			}
-		}
-		// data from lower/binary layer
-		for (itr = states.begin();itr != states.end();itr++){
-			while((*itr).incoming.size()){
-				text.updateMessage((*itr).incoming.front());
-				text.print();
-				(*itr).incoming.pop();
-				text.parse();
-				cmd = text.getCommand();
-				if(cmd == "LIST"){
-					// Create text message
-					text.updateServerID("server334");
-					text.updateDeviceIDs(sensors);
-					str = text.createListReply();
-					(*itr).outgoing.push(str);
+				else if(fds[c] == sfd){
+					temp = accept(sfd,NULL,NULL);	
+					fds.push_back(temp);
 				}
-				else if(cmd == "SUBSCRIBE"){
+				else {
+					rsize = recv(fds[c],(char *)buff,BUFF_SIZE,0);
+					text.updateMessage((char*)buff);
+					text.print();
+					text.parse();
+					cmd = text.getCommand();
+					if(cmd == "LIST"){
+						// Create text message
+						text.updateServerID("server334");
+						text.updateDeviceIDs(sensors);
+						str = text.createListReply();
+						memcpy((char *)buff,str.c_str(),str.size());
+						send(fds[c],(char *)buff,str.size(),0);					
+					}		
+					else if(cmd == "SUBSCRIBE"){
+						//
+						subs.insert(std::pair< int,std::vector<std::string> >(fds[c],text.getDeviceIDs()));
+						// 	
+						#ifdef vv
+						std::cout<<"Subs"<<std::endl;
+						#endif
+						std::vector<int> ti;
+						ti.push_back(fds[c]);
+						std::cout<<ti.size()<<std::endl;					
+						std::vector<std::string> ts;
+						ts = text.getDeviceIDs();
+						std::cout<<ts.size()<<std::endl;
+						for(std::vector<std::string>::iterator itr = ts.begin();itr != ts.end();itr++){
+							std::cout<<*itr<<std::endl;
+							list.insert(std::pair< std::string,std::vector<int> > (*itr,ti));
+						} 
+						text.updateServerID("server334");
+						str = text.createSubscribeReply();
+						memcpy((char *)buff,str.c_str(),str.size());
+						send(fds[c],(char *)buff,str.size(),0);							
+					}
+					else if(cmd == "UNSUBSCRBE"){
+						subs.erase(fds[c]);
+						text.updateServerID("server334");
+						str = text.createUnsubscribeReply();
+						memcpy((char *)buff,str.c_str(),str.size());
+						send(fds[c],(char *)buff,str.size(),0);	
+					}
 				}
-				else if(cmd == "UNSUBSCRIBE"){
-				}							
-			}	
+			}		
 		}			
 	}
-
+		
 	return 0;
 }

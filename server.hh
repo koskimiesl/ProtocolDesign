@@ -10,22 +10,22 @@
 #include<utility>
 #include<algorithm>
 #include<queue>
+#include<map>
 
 #include<unistd.h>
 #include<sys/socket.h>
+#include<sys/un.h>
 #include<sys/types.h>
 #include<netinet/in.h>
 #include<arpa/inet.h>
 #include<netdb.h>
-#include<pthread.h>
 #define vv
 #define DEBUG
 
-#include"icp.hh"
-#include"state.hh"
 #include"helpers.hh"
 #include"comm.hh"
 #include"sensormsg.hh"
 
+#define SOCK_PATH "echo_socket"
 
 #endif

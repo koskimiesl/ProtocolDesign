@@ -20,11 +20,14 @@ public:
 	socklen_t len;
 	unsigned short seq;
 	unsigned short ack;
+	int fd;
 	enum Status status;
 	std::queue<std::string> incoming;
 	std::queue<std::string> outgoing;
 	// functions
 	bool isEqual(struct sockaddr *a);
+	bool isEqual(int f);
+	void acK(unsigned short a);
 	State();	
 };
 
