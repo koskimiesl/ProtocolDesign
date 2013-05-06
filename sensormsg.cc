@@ -1,26 +1,32 @@
 #include "sensormsg.hh"
+#include <cstring>
+#include <fstream>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
-SensorMessage::SensorMessage(const std::string message) : message(message)
+SensorMessage::SensorMessage(const char* message) : message(message)
 { }
 
 bool SensorMessage::parse()
 {
+	if (message == NULL)
+		return false;
+	std::string msg(message);
 	const std::string delimiter = "'";
-	size_t first, second, third, fourth; // positions of 4 successive delimiters
-	first = message.find(delimiter, 0);
-	second = message.find(delimiter, first + 1);
-	third = message.find(delimiter, second + 1);
-	fourth = message.find(delimiter, third + 1);
-	if (first == std::string::npos || second == std::string::npos ||
-		third == std::string::npos || fourth == std::string::npos)
+	size_t name_start, name_end, value_start, value_end; // positions of 4 successive delimiters
+	name_start = msg.find(delimiter, 0);
+	name_end = msg.find(delimiter, name_start + 1);
+	value_start = msg.find(delimiter, name_end + 1);
+	value_end = msg.find(delimiter, value_start + 1);
+	if (name_start == std::string::npos || name_end == std::string::npos ||
+		value_start == std::string::npos || value_end == std::string::npos)
 	{
 		std::cout << "Delimiter not found" << std::endl;
 		return false;
 	}
-	std::string fieldname = message.substr(first + 1, second - first - 1);
-	std::string value = message.substr(third + 1, fourth - third - 1);
+	std::string fieldname = msg.substr(name_start + 1, name_end - name_start - 1);
+	std::string value = msg.substr(value_start + 1, value_end - value_start - 1);
 	if (fieldname != "dev_id") // first field should be dev_id
 	{
 		std::cout << "Unknown message" << std::endl;
@@ -41,21 +47,21 @@ bool SensorMessage::parse()
 			return false;
 		}
 		size_t n = 0;
-		size_t continuepos = fourth + 1; // position to continue searching
+		size_t continuepos = value_end + 1; // position to continue searching
 		while (n < 4) // message includes 4 more fields and values
 		{
-			first = message.find(delimiter, continuepos);
-			second = message.find(delimiter, first + 1);
-			third = message.find(delimiter, second + 1);
-			fourth = message.find(delimiter, third + 1);
-			if (first == std::string::npos || second == std::string::npos ||
-				third == std::string::npos || fourth == std::string::npos)
+			name_start = msg.find(delimiter, continuepos);
+			name_end = msg.find(delimiter, name_start + 1);
+			value_start = msg.find(delimiter, name_end + 1);
+			value_end = msg.find(delimiter, value_start + 1);
+			if (name_start == std::string::npos || name_end == std::string::npos ||
+				value_start == std::string::npos || value_end == std::string::npos)
 			{
 				std::cout << "Delimiter not found" << std::endl;
 				return false;
 			}
-			fieldname = message.substr(first + 1, second - first - 1);
-			value = message.substr(third + 1, fourth - third - 1);
+			fieldname = msg.substr(name_start + 1, name_end - name_start - 1);
+			value = msg.substr(value_start + 1, value_end - value_start - 1);
 			// input string stream to help with conversions to size_t
 			std::istringstream valueiss(value);
 			if (fieldname == "sensor_data")
@@ -71,14 +77,66 @@ bool SensorMessage::parse()
 				std::cout << "Unsupported field" << std::endl;
 				return false;
 			}
-			continuepos = fourth + 1;
+			continuepos = value_end + 1;
 			n++;
 		}
 	}
-	else // parse camera message
+	else // parse camera message (not ready)
 	{
 		std::cout << "Parsing camera data" << std::endl;
-		// TODO
+		deviceid = value;
+		sensortype = CAMERA;
+		size_t pos;
+
+		// check data size
+		if ((pos = msg.find("data_size")) == std::string::npos)
+		{
+			std::cout << "data_size field not found" << std::endl;
+			return false;
+		}
+		name_end = msg.find(delimiter, pos);
+		value_start = msg.find(delimiter, name_end + 1);
+		value_end = msg.find(delimiter, value_start + 1);
+		if (name_end == std::string::npos || value_start == std::string::npos ||
+			value_end == std::string::npos)
+		{
+			std::cout << "Delimiter not found" << std::endl;
+			return false;
+		}
+		value = msg.substr(value_start + 1, value_end - value_start - 1);
+		std::istringstream valueiss(value);
+		valueiss >> datasize;
+
+		// check sensor data
+		if ((pos = msg.find("sensor_data")) == std::string::npos)
+		{
+			std::cout << "sensor_data field not found" << std::endl;
+			return false;
+		}
+		name_end = msg.find(delimiter, pos);
+		value_start = msg.find(delimiter, name_end + 1);
+		value_end = msg.find(delimiter, value_start + 1);
+		if (name_end == std::string::npos || value_start == std::string::npos ||
+			value_end == std::string::npos)
+		{
+			std::cout << "Delimiter not found" << std::endl;
+			return false;
+		}
+		value = msg.substr(value_start + 1, value_end - value_start - 1);
+		if (value == "NO_MOTION")
+		{
+			std::cout << "camera no motion" << std::endl;
+			sensordata = value;
+			return true;
+		}
+
+		// write camera data to a file
+		const char* data_start = strstr(message, "sensor_data") + 15; // should be pointer to data start?
+		size_t i;
+		std::ofstream fs("camdata.data", std::ios::out | std::ios::binary | std::ios::app);
+		fs.write(data_start, datasize);
+		fs.flush();
+		fs.close();
 	}
 	return true;
 }
