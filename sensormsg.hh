@@ -14,12 +14,16 @@ enum SensorType
 class SensorMessage
 {
 public:
-	SensorMessage(const char* message);
+	SensorMessage(const std::string message);
 	bool parse();
+	bool parseCamData(unsigned char* camdata, const std::string data, size_t nbytes) const;
+	std::string parseValue(const std::string fieldname) const;
+	unsigned int hexToUInt(const std::string hexstr) const;
+	unsigned int escSeqToUInt(const std::string escseqstr) const;
 	void printValues() const;
 	void printMessage() const;
 
-	const char* message;
+	std::string message;
 	std::string deviceid;
 	std::string sensordata;
 	size_t seqno;

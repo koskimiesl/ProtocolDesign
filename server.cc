@@ -55,7 +55,7 @@ int main(int argc,char *argv[]){
 			return -1;		
 		}
 	}
-	
+
 	// create publish socket
 	if ((pfd = custom_socket(AF_INET,pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
 		return -1;
@@ -89,32 +89,35 @@ int main(int argc,char *argv[]){
 		maxfd = fds[fds.size()-1] + 1; //check here
 		// data from sensors
 		if( (ret = pselect(maxfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
+			perror("pselect");
 			continue;
 		}
 		for(size_t c = 0;c < fds.size();c++){
 			if(FD_ISSET(fds[c],&rfds)){
 				if(fds[c] == pfd){
 					if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
-					{	
 						continue;
-					}
-					else {
-						SensorMessage msg = SensorMessage((char*)buff);
-						if (!msg.parse())
+					else{
+						std::string msg((char*)buff, rsize);
+						SensorMessage sensormsg = SensorMessage(msg);
+						if (!sensormsg.parse()){
+							std::cout << "Parsing failed" << std::endl;
 							continue;
+						}
 						else{
-							if(std::find(sensors.begin(),sensors.end(),msg.deviceid) == sensors.end()){
-								sensors.push_back(msg.deviceid);
+							sensormsg.printValues();
+							if(std::find(sensors.begin(),sensors.end(),sensormsg.deviceid) == sensors.end()){
+								sensors.push_back(sensormsg.deviceid);
 							}
 							else {
-								std::vector<int> t = list.find(msg.deviceid)->second;
+								std::vector<int> t = list.find(sensormsg.deviceid)->second;
 								std::cout<<t.size()<<std::endl;
 								for(std::vector<int>::iterator itr = t.begin();itr != t.end();itr++){
 									text.updateServerID("server334");
 									text.updateCount(1);
 									text.updateSize(rsize);
 									std::vector<std::string> tt;
-									tt.push_back(msg.deviceid);
+									tt.push_back(sensormsg.deviceid);
 									text.updateDeviceIDs(tt);
 									str = text.createUpdatesMessage();
 									std::cout<<str<<std::endl;

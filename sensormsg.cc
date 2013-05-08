@@ -1,144 +1,254 @@
 #include "sensormsg.hh"
-#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <vector>
 
-SensorMessage::SensorMessage(const char* message) : message(message)
+SensorMessage::SensorMessage(const std::string message) : message(message)
 { }
 
+/* Parses sensor message and returns boolean value indicating success */
 bool SensorMessage::parse()
 {
-	if (message == NULL)
+	// parse device id and sensor type
+	std::string devid;
+	if ((devid = parseValue("dev_id")).empty())
 		return false;
-	std::string msg(message);
-	const std::string delimiter = "'";
-	size_t name_start, name_end, value_start, value_end; // positions of 4 successive delimiters
-	name_start = msg.find(delimiter, 0);
-	name_end = msg.find(delimiter, name_start + 1);
-	value_start = msg.find(delimiter, name_end + 1);
-	value_end = msg.find(delimiter, value_start + 1);
-	if (name_start == std::string::npos || name_end == std::string::npos ||
-		value_start == std::string::npos || value_end == std::string::npos)
-	{
-		std::cout << "Delimiter not found" << std::endl;
-		return false;
-	}
-	std::string fieldname = msg.substr(name_start + 1, name_end - name_start - 1);
-	std::string value = msg.substr(value_start + 1, value_end - value_start - 1);
-	if (fieldname != "dev_id") // first field should be dev_id
-	{
-		std::cout << "Unknown message" << std::endl;
-		return false;
-	}
-	else if (value.find("camera") == std::string::npos) // parse non-camera message
-	{
-		deviceid = value;
-		if (value.find("device") != std::string::npos)
-			sensortype = DEVICE;
-		else if (value.find("temp") != std::string::npos)
-			sensortype = TEMPERATURE;
-		else if (value.find("gps") != std::string::npos)
-			sensortype = GPS;
-		else
-		{
-			std::cout << "Unsupported device" << std::endl;
-			return false;
-		}
-		size_t n = 0;
-		size_t continuepos = value_end + 1; // position to continue searching
-		while (n < 4) // message includes 4 more fields and values
-		{
-			name_start = msg.find(delimiter, continuepos);
-			name_end = msg.find(delimiter, name_start + 1);
-			value_start = msg.find(delimiter, name_end + 1);
-			value_end = msg.find(delimiter, value_start + 1);
-			if (name_start == std::string::npos || name_end == std::string::npos ||
-				value_start == std::string::npos || value_end == std::string::npos)
-			{
-				std::cout << "Delimiter not found" << std::endl;
-				return false;
-			}
-			fieldname = msg.substr(name_start + 1, name_end - name_start - 1);
-			value = msg.substr(value_start + 1, value_end - value_start - 1);
-			// input string stream to help with conversions to size_t
-			std::istringstream valueiss(value);
-			if (fieldname == "sensor_data")
-				sensordata = value;
-			else if (fieldname == "seq_no")
-				valueiss >> seqno;
-			else if (fieldname == "ts")
-				timestamp = value;
-			else if (fieldname == "data_size")
-				valueiss >> datasize;
-			else
-			{
-				std::cout << "Unsupported field" << std::endl;
-				return false;
-			}
-			continuepos = value_end + 1;
-			n++;
-		}
-	}
-	else // parse camera message (not ready)
-	{
-		std::cout << "Parsing camera data" << std::endl;
-		deviceid = value;
+	if (devid.find("device") != std::string::npos)
+		sensortype = DEVICE;
+	else if (devid.find("temp") != std::string::npos)
+		sensortype = TEMPERATURE;
+	else if (devid.find("gps") != std::string::npos)
+		sensortype = GPS;
+	else if (devid.find("camera") != std::string::npos)
 		sensortype = CAMERA;
-		size_t pos;
+	else
+	{
+		std::cerr << "Unsupported sensor" << std::endl;
+		return false;
+	}
+	deviceid = devid;
 
-		// check data size
-		if ((pos = msg.find("data_size")) == std::string::npos)
-		{
-			std::cout << "data_size field not found" << std::endl;
-			return false;
-		}
-		name_end = msg.find(delimiter, pos);
-		value_start = msg.find(delimiter, name_end + 1);
-		value_end = msg.find(delimiter, value_start + 1);
-		if (name_end == std::string::npos || value_start == std::string::npos ||
-			value_end == std::string::npos)
-		{
-			std::cout << "Delimiter not found" << std::endl;
-			return false;
-		}
-		value = msg.substr(value_start + 1, value_end - value_start - 1);
-		std::istringstream valueiss(value);
-		valueiss >> datasize;
+	// parse sequence number
+	std::string sn;
+	if ((sn = parseValue("seq_no")).empty())
+		return false;
+	std::istringstream sniss(sn);
+	sniss >> seqno;
 
-		// check sensor data
-		if ((pos = msg.find("sensor_data")) == std::string::npos)
+	// parse timestamp
+	if ((timestamp = parseValue("ts")).empty())
+		return false;
+
+	// parse data size
+	std::string ds;
+	if ((ds = parseValue("data_size")).empty())
+		return false;
+	std::istringstream dsiss(ds);
+	dsiss >> datasize;
+
+	if (sensortype == CAMERA) // parse camera sensor data
+	{
+		size_t namestart;
+		if ((namestart = message.find("'sensor_data':")) == std::string::npos)
 		{
-			std::cout << "sensor_data field not found" << std::endl;
+			std::cerr << "Camera sensor_data field not found" << std::endl;
 			return false;
 		}
-		name_end = msg.find(delimiter, pos);
-		value_start = msg.find(delimiter, name_end + 1);
-		value_end = msg.find(delimiter, value_start + 1);
-		if (name_end == std::string::npos || value_start == std::string::npos ||
-			value_end == std::string::npos)
+		const std::string delimiter = "'";
+		size_t nameend, valuestart, valueend;
+		if ((nameend = message.find(delimiter, namestart + 1)) == std::string::npos)
 		{
-			std::cout << "Delimiter not found" << std::endl;
+			std::cerr << "Camera sensor_data field name end not found" << std::endl;
 			return false;
 		}
-		value = msg.substr(value_start + 1, value_end - value_start - 1);
+		valuestart = message.find(delimiter, nameend + 1);
+		valueend = message.find(delimiter, valuestart + 1);
+		if (valuestart == std::string::npos or valueend == std::string::npos)
+		{
+			std::cerr << "Delimiter(s) not found" << std::endl;
+			return false;
+		}
+		std::string value = message.substr(valuestart + 1, valueend - valuestart - 1);
 		if (value == "NO_MOTION")
 		{
-			std::cout << "camera no motion" << std::endl;
 			sensordata = value;
 			return true;
 		}
-
-		// write camera data to a file
-		const char* data_start = strstr(message, "sensor_data") + 15; // should be pointer to data start?
-		size_t i;
-		std::ofstream fs("camdata.data", std::ios::out | std::ios::binary | std::ios::app);
-		fs.write(data_start, datasize);
-		fs.flush();
+		value = message.substr(nameend + 4);
+		unsigned char camdata[datasize];
+		if (!parseCamData(camdata, value, datasize))
+		{
+			std::cerr << "Failed to parse camera data" << std::endl;
+			return false;
+		}
+		std::string filename = "server_" + deviceid + ".data";
+		std::ofstream fs(filename.c_str(), std::ios::out | std::ios::binary | std::ios::app);
+		fs.write((char*)camdata, datasize);
 		fs.close();
 	}
+	else // parse non-camera sensor data
+	{
+		if ((sensordata = parseValue("sensor_data")).empty())
+			return false;
+	}
 	return true;
+}
+
+/* Parses given number of bytes from string describing binary data to the given array */
+bool SensorMessage::parseCamData(unsigned char* camdata, const std::string data, size_t nbytes) const
+{
+	std::string::const_iterator it = data.begin();
+	size_t i = 0;
+	while (it != data.end() and i < nbytes)
+	{
+		if (*it == '\\') // backslash found
+		{
+			if (it + 1 != data.end() and *(it + 1) == 'x') // hex prefix found
+			{
+				if (it + 2 != data.end() and it + 3 != data.end()) // hex number found
+				{
+					std::string hex(it + 2, it + 4);
+					camdata[i] = hexToUInt(hex);
+					it = it + 4;
+				}
+				else
+				{
+					std::cerr << "Hex number not found after prefix" << std::endl;
+					return false;
+				}
+			}
+			else if (it + 1 != data.end()) // escape sequence found
+			{
+				std::string escseq(it, it + 2);
+				camdata[i] = escSeqToUInt(escseq);
+				it = it + 2;
+			}
+			else
+			{
+				std::cerr << "No character found after backslash" << std::endl;
+				return false;
+			}
+		}
+		else
+		{
+			camdata[i] = *it;
+			it++;
+		}
+		i++;
+	}
+	if (i != nbytes)
+	{
+		std::cerr << "Wrong number of bytes read" << std::endl;
+		return false;
+	}
+	return true;
+}
+
+/* Parses value as a string from the given field in the message */
+std::string SensorMessage::parseValue(const std::string fieldname) const
+{
+	size_t namestart;
+	if ((namestart = message.find("'" + fieldname + "':")) == std::string::npos)
+	{
+		std::cerr << fieldname << " field not found" << std::endl;
+		return "";
+	}
+	const std::string delimiter = "'";
+	size_t nameend = message.find(delimiter, namestart + 1);
+	size_t valuestart = message.find(delimiter, nameend + 1);
+	size_t valueend = message.find(delimiter, valuestart + 1);
+	if (nameend == std::string::npos or valuestart == std::string::npos
+		or valueend == std::string::npos)
+	{
+		std::cerr << "Delimiter(s) not found" << std::endl;
+		return "";
+	}
+	std::string value = message.substr(valuestart + 1, valueend - valuestart - 1);
+	return value;
+}
+
+/* Hex number in the given string to unsigned integer value */
+unsigned int SensorMessage::hexToUInt(const std::string hex) const
+{
+	unsigned int value;
+	std::stringstream ss(hex);
+	ss >> std::hex >> value;
+	return value;
+}
+
+/* Escape sequence in the given string to unsigned integer value (ASCII code) */
+unsigned int SensorMessage::escSeqToUInt(const std::string escseq) const
+{
+	if (escseq[0] != '\\' or escseq.length() != 2)
+	{
+		std::cerr << "Invalid escape sequence" << std::endl;
+		return 0;
+	}
+	unsigned int value;
+	switch (escseq[1])
+	{
+		case '\\':
+		{
+			value = 92;
+			break;
+		}
+		case '\"':
+		{
+			value = 34;
+			break;
+		}
+		case '\'':
+		{
+			value = 39;
+			break;
+		}
+		case '0':
+		{
+			value = 0;
+			break;
+		}
+		case 'a':
+		{
+			value = 7;
+			break;
+		}
+		case 'b':
+		{
+			value = 8;
+			break;
+		}
+		case 'f':
+		{
+			value = 12;
+			break;
+		}
+		case 'n':
+		{
+			value = 10;
+			break;
+		}
+		case 'r':
+		{
+			value = 13;
+			break;
+		}
+		case 't':
+		{
+			value = 9;
+			break;
+		}
+		case 'v':
+		{
+			value = 11;
+			break;
+		}
+		default:
+		{
+			std::cerr << "Unidentified escape sequence" << std::endl;
+			return 0;
+		}
+	}
+	return value;
 }
 
 void SensorMessage::printValues() const
