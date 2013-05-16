@@ -1,12 +1,12 @@
 CC = g++
-CFLAGS = -lncurses -std=c++98 -pthread
+CFLAGS = -std=c++98 -pthread
 
 objects_client = comm.o icp.o state.o helpers.o client.o screen.o
 objects_clientb = comm.o icp.o state.o helpers.o clientb.o
-objects_server = comm.o icp.o state.o helpers.o sensormsg.o server.o 
+objects_server = comm.o icp.o state.o helpers.o logging.o sensormsg.o server.o 
 objects_serverb = comm.o icp.o state.o helpers.o sensormsg.o serverb.o 
 
-objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o
+objects = comm.o icp.o state.o client.o server.o helpers.o logging.o sensormsg.o screen.o serverb.o clientb.o
 
 PROGS = server client serverb clientb
 
@@ -46,6 +46,9 @@ state.o:state.cc
 	$(CC) -c $^ $(CFLAGS) 
 
 helpers.o:helpers.cc
+	$(CC) -c $^ $(CFLAGS)
+	
+logging.o:logging.cc
 	$(CC) -c $^ $(CFLAGS)
 
 sensormsg.o:sensormsg.cc

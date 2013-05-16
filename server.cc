@@ -106,6 +106,12 @@ int main(int argc,char *argv[]){
 						}
 						else{
 							sensormsg.printValues();
+
+							if (sensormsg.sensortype == CAMERA)
+								logCamSensorData(sensormsg);
+							else
+								logSensorData(sensormsg);
+
 							if(std::find(sensors.begin(),sensors.end(),sensormsg.deviceid) == sensors.end()){
 								sensors.push_back(sensormsg.deviceid);
 							}

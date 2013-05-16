@@ -26,6 +26,7 @@ public:
 	std::string message;
 	std::string deviceid;
 	std::string sensordata;
+	unsigned char* camsensordata;
 	size_t seqno;
 	std::string timestamp; // string for now
 	size_t datasize;

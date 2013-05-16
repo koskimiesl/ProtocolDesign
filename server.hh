@@ -25,6 +25,7 @@
 #include"helpers.hh"
 #include"comm.hh"
 #include"sensormsg.hh"
+#include"logging.hh"
 
 #define SOCK_PATH "echo_socket"
 

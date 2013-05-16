@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-SensorMessage::SensorMessage(const std::string message) : message(message)
+SensorMessage::SensorMessage(const std::string message) : message(message), camsensordata(NULL)
 { }
 
 /* Parses sensor message and returns boolean value indicating success */
@@ -81,10 +81,13 @@ bool SensorMessage::parse()
 			std::cerr << "Failed to parse camera data" << std::endl;
 			return false;
 		}
+		camsensordata = camdata;
+		/*
 		std::string filename = "server_" + deviceid + ".data";
 		std::ofstream fs(filename.c_str(), std::ios::out | std::ios::binary | std::ios::app);
-		fs.write((char*)camdata, datasize);
+		fs.write((char*)camsensordata, datasize);
 		fs.close();
+		*/
 	}
 	else // parse non-camera sensor data
 	{
