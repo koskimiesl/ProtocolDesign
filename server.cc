@@ -98,8 +98,9 @@ int main(int argc,char *argv[]){
 					if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
 						continue;
 					else{
+						double ts = getTimeStamp();
 						std::string msg((char*)buff, rsize);
-						SensorMessage sensormsg = SensorMessage(msg);
+						SensorMessage sensormsg = SensorMessage(msg, ts);
 						if (!sensormsg.parse()){
 							std::cout << "Parsing failed" << std::endl;
 							continue;

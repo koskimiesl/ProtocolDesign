@@ -1,4 +1,8 @@
-#include"helpers.hh"
+#include <iomanip>
+#include <sstream>
+#include <sys/time.h>
+#include "helpers.hh"
+
 void error(std::string msg)
 {
 	std::cerr << msg << ":" << strerror(errno) << std::endl;
@@ -79,4 +83,15 @@ int custom_socket(int family,const char port[]){
 	freeaddrinfo(result);
 	
 	return sfd;
+}
+
+double getTimeStamp()
+{
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	double timestamp = (double)tv.tv_sec + (double)1e-6 * tv.tv_usec;
+	std::stringstream ss;
+	ss << std::setprecision(3) << std::setiosflags(std::ios_base::fixed) << timestamp;
+	ss >> timestamp;
+	return timestamp;
 }

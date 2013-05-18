@@ -17,9 +17,9 @@
 #define PORTLEN 10
 //#define vv
 
-// Print custom message (msg) and error message corresponding to errno to stderr
 void error(std::string msg);
-
 int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
+double getTimeStamp(); // elapsed time since Epoch in millisecond precision
+
 #endif

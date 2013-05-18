@@ -15,7 +15,7 @@ enum SensorType
 class SensorMessage
 {
 public:
-	SensorMessage(const std::string message);
+	SensorMessage(const std::string message, double receivets);
 	bool parse();
 	bool parseCamData(const std::string data, size_t nbytes);
 	std::string parseValue(const std::string fieldname) const;
@@ -30,7 +30,7 @@ public:
 	std::vector<unsigned char> camsensordata;
 	size_t seqno;
 	std::string sensorts; // sensor timestamp
-
+	double receivets; // receive timestamp
 	size_t datasize;
 	enum SensorType sensortype;
 };

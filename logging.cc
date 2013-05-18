@@ -1,13 +1,17 @@
 #include <fstream>
+#include <iomanip>
 #include <iterator>
+#include <limits>
 #include <vector>
 #include "logging.hh"
+
+typedef std::numeric_limits<double> dbl;
 
 void logSensorData(const SensorMessage& msg)
 {
 	std::string filename = "server_" + msg.deviceid + ".log";
 	std::ofstream fs(filename.c_str(), std::ios::out | std::ios::app);
-	fs << msg.sensorts << "\t" << msg.seqno << "\t" << msg.sensordata << std::endl; // will be replaced by server timestamp
+	fs << std::setprecision(dbl::digits10) << msg.receivets << "\t" << msg.seqno << "\t" << msg.sensordata << std::endl;
 	fs.close();
 }
 
@@ -15,7 +19,7 @@ void logCamSensorData(const SensorMessage& msg)
 {
 	std::string filename = "server_" + msg.deviceid + ".log";
 	std::ofstream fs(filename.c_str(), std::ios::out | std::ios::app);
-	fs << msg.sensorts << "\t" << msg.seqno << "\t" << msg.datasize << std::endl; // will be replaced by server timestamp
+	fs << std::setprecision(dbl::digits10) << msg.receivets << "\t" << msg.seqno << "\t" << msg.datasize << std::endl;
 	fs.close();
 
 	if (msg.sensordata == "NO_MOTION")

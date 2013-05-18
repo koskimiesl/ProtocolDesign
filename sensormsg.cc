@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-SensorMessage::SensorMessage(const std::string message) : message(message)
+SensorMessage::SensorMessage(const std::string message, double receivets) : message(message), receivets(receivets)
 { }
 
 /* Parses sensor message and returns boolean value indicating success */
