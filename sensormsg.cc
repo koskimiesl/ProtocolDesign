@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-SensorMessage::SensorMessage(const std::string message) : message(message), camsensordata(NULL)
+SensorMessage::SensorMessage(const std::string message) : message(message)
 { }
 
 /* Parses sensor message and returns boolean value indicating success */
@@ -35,8 +35,8 @@ bool SensorMessage::parse()
 	std::istringstream sniss(sn);
 	sniss >> seqno;
 
-	// parse timestamp
-	if ((timestamp = parseValue("ts")).empty())
+	// parse sensor timestamp
+	if ((sensorts = parseValue("ts")).empty())
 		return false;
 
 	// parse data size
@@ -75,19 +75,11 @@ bool SensorMessage::parse()
 			return true;
 		}
 		value = message.substr(nameend + 4);
-		unsigned char camdata[datasize];
-		if (!parseCamData(camdata, value, datasize))
+		if (!parseCamData(value, datasize))
 		{
 			std::cerr << "Failed to parse camera data" << std::endl;
 			return false;
 		}
-		camsensordata = camdata;
-		/*
-		std::string filename = "server_" + deviceid + ".data";
-		std::ofstream fs(filename.c_str(), std::ios::out | std::ios::binary | std::ios::app);
-		fs.write((char*)camsensordata, datasize);
-		fs.close();
-		*/
 	}
 	else // parse non-camera sensor data
 	{
@@ -97,8 +89,8 @@ bool SensorMessage::parse()
 	return true;
 }
 
-/* Parses given number of bytes from string describing binary data to the given array */
-bool SensorMessage::parseCamData(unsigned char* camdata, const std::string data, size_t nbytes) const
+/* Parses given number of bytes from given string describing binary data into vector "camsensordata" */
+bool SensorMessage::parseCamData(const std::string data, size_t nbytes)
 {
 	std::string::const_iterator it = data.begin();
 	size_t i = 0;
@@ -111,7 +103,7 @@ bool SensorMessage::parseCamData(unsigned char* camdata, const std::string data,
 				if (it + 2 != data.end() and it + 3 != data.end()) // hex number found
 				{
 					std::string hex(it + 2, it + 4);
-					camdata[i] = hexToUInt(hex);
+					camsensordata.push_back(hexToUInt(hex));
 					it = it + 4;
 				}
 				else
@@ -123,7 +115,7 @@ bool SensorMessage::parseCamData(unsigned char* camdata, const std::string data,
 			else if (it + 1 != data.end()) // escape sequence found
 			{
 				std::string escseq(it, it + 2);
-				camdata[i] = escSeqToUInt(escseq);
+				camsensordata.push_back(escSeqToUInt(escseq));
 				it = it + 2;
 			}
 			else
@@ -134,7 +126,7 @@ bool SensorMessage::parseCamData(unsigned char* camdata, const std::string data,
 		}
 		else
 		{
-			camdata[i] = *it;
+			camsensordata.push_back(*it);
 			it++;
 		}
 		i++;
@@ -259,7 +251,7 @@ void SensorMessage::printValues() const
 	std::cout << "Device ID: " << deviceid << std::endl;
 	std::cout << "Sensor data: " << sensordata << std::endl;
 	std::cout << "Seq no: " << seqno << std::endl;
-	std::cout << "Timestamp: " << timestamp << std::endl;
+	std::cout << "Timestamp: " << sensorts << std::endl;
 	std::cout << "Data size: " << datasize << std::endl;
 	std::cout << "Sensor type: " << sensortype << std::endl;
 }

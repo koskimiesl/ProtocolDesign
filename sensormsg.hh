@@ -2,6 +2,7 @@
 #define SENSORMSG_HH
 
 #include <string>
+#include <vector>
 
 enum SensorType
 {
@@ -16,7 +17,7 @@ class SensorMessage
 public:
 	SensorMessage(const std::string message);
 	bool parse();
-	bool parseCamData(unsigned char* camdata, const std::string data, size_t nbytes) const;
+	bool parseCamData(const std::string data, size_t nbytes);
 	std::string parseValue(const std::string fieldname) const;
 	unsigned int hexToUInt(const std::string hexstr) const;
 	unsigned int escSeqToUInt(const std::string escseqstr) const;
@@ -26,9 +27,10 @@ public:
 	std::string message;
 	std::string deviceid;
 	std::string sensordata;
-	unsigned char* camsensordata;
+	std::vector<unsigned char> camsensordata;
 	size_t seqno;
-	std::string timestamp; // string for now
+	std::string sensorts; // sensor timestamp
+
 	size_t datasize;
 	enum SensorType sensortype;
 };
