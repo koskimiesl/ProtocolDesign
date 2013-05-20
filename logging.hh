@@ -3,8 +3,12 @@
 
 #include "sensormsg.hh"
 
-void logSensorData(const SensorMessage& msg);
+void logIncomingData(const SensorMessage& msg, const std::string prefix);
 
-void logCamSensorData(const SensorMessage& msg);
+void logIncomingCamData(const SensorMessage& msg, const std::string prefix);
+
+void logOutgoingData(const std::string deviceid, const char* obuff, size_t datasize, double sendts);
+
+void logOutgoingCamData(const std::string deviceid, const char* obuff, size_t datasize, double sendts);
 
 #endif
