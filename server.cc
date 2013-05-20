@@ -1,125 +1,171 @@
 /* IoTPS Server */
-#include"server.hh"
 
-int main(int argc,char *argv[]){
-	std::vector<std::string> sensors;
-	char pport[PORTLEN],sport[PORTLEN];
-	unsigned char buff[BUFF_SIZE];
-	unsigned char obuff[BUFF_SIZE];
-	socklen_t len;	
+#include <unistd.h>
+#include <vector>
+
+#include "helpers.hh"
+#include "server.hh"
+
+int main(int argc, char *argv[])
+{
+	// parse command line options
 	int opt;
-	int ret;
-	int pfd,sfd;
-	int temp;
-	int maxfd;	
-	int length;	
-	size_t rsize;	
-	pid_t pid;
-	fd_set rfds;	
-	std::vector<int> fds;	
-	std::string str;
-	CommMessage text;
-	std::string cmd;
-	std::map< int,std::vector<std::string> > subs;
-	std::map< std::string,std::vector<int> > list;
-	struct sockaddr addr;
-	struct sockaddr_un local;	
-	struct timespec t;
-	t.tv_sec = 1;
-	t.tv_nsec = 0;
-	len = sizeof(struct sockaddr);	
-
-	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:")) != -1){
-		switch(opt){
+	char pport[SPORTLEN], sport[SPORTLEN]; // publish port, subscribe port
+	while ((opt = getopt(argc, argv, "s:p:")) != -1)
+	{
+		switch (opt)
+		{
 			case 's':
-				strncpy(sport,optarg,PORTLEN);
+				strncpy(sport, optarg, PORTLEN);
 				break;
 			case 'p':
-				strncpy(pport,optarg,PORTLEN);
+				strncpy(pport, optarg, PORTLEN);
 				break;
 			case '?':
 				return -1;
 			default:
-				return -1;		
+				return -1;
 		}
 	}
 
-	if( (pid = fork()) < 0){
-		perror("fork");
+	// start server binary protocol process
+	pid_t pid;
+	if ((pid = fork()) < 0)
+	{
+		error("fork");
 		return -1;
 	}
-	else if(pid == 0){
-		if(execl("serverb",sport,(void *)0) == -1){
-			perror("execl");
-			return -1;		
+	else if (pid == 0)
+	{
+		if (execl("serverb", sport, (void*)0) == -1)
+		{
+			error("execl");
+			return -1;
 		}
 	}
 
 	// create publish socket
-	if ((pfd = custom_socket(AF_INET,pport)) == -1) // AF_INET, AF_INET6 or AF_UNSPEC
+	int pfd;
+	if ((pfd = custom_socket(AF_INET, pport)) == -1)
+	{
+		error("create publish socket");
 		return -1;
+	}
 
-	memset(&local,0,sizeof(struct sockaddr_un));
-		
-	if( (sfd = socket(AF_UNIX,SOCK_STREAM,0)) == -1)
-		perror("socket");
-	
+	// create subscribe socket
+	int sfd;
+	if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+	{
+		error("create subscribe socket");
+		return -1;
+	}
+
+	// bind and listen subscribe socket (UNIX domain)
+	struct sockaddr_un local;
+	memset(&local, 0, sizeof(struct sockaddr_un));
 	local.sun_family = AF_UNIX;
-	strcpy(local.sun_path, SOCK_PATH);
-	unlink(local.sun_path);
-	length = strlen(local.sun_path) + sizeof(local.sun_family);
-
-	if( (bind(sfd,(struct sockaddr *)&local,length)) == -1)
-		perror("bind");
-	if( (listen(sfd,5)) == -1)
+	strcpy(local.sun_path, SOCKPATH);
+	unlink(local.sun_path); // remove the file if it already exists
+	int length;
+	length = sizeof(local.sun_family) + strlen(local.sun_path);
+	if ((bind(sfd, (struct sockaddr*)&local, length)) == -1)
+	{
+		error("bind subscribe socket");
 		return -1;
+	}
+	if ((listen(sfd, 5)) == -1)
+	{
+		error("listen subscribe socket");
+		return -1;
+	}
 
-	#ifdef vv
-	std::cout<<"Server started."<<std::endl;
-	#endif
-
+	fd_set rfds;
+	std::vector<int> fds;
 	fds.push_back(pfd);
 	fds.push_back(sfd);
-	while(1){
-		FD_ZERO(&rfds);	
-		for(size_t c = 0;c < fds.size();c++)
-			FD_SET(fds[c],&rfds);
-		std::sort(fds.begin(),fds.end());
-		maxfd = fds[fds.size()-1] + 1; //check here
-		// data from sensors
-		if( (ret = pselect(maxfd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
-			perror("pselect");
+	int maxfd;
+	int ret;
+	struct timespec t;
+	t.tv_sec = 1;
+	t.tv_nsec = 0;
+	size_t rsize;
+	unsigned char buff[SBUFFSIZE];
+	struct sockaddr addr;
+	socklen_t len;
+	len = sizeof(struct sockaddr);
+	std::vector<std::string> sensors; // list of active sensors (device IDs)
+	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to subscriber lists
+	/*
+	std::vector<int> testsubs;
+	testsubs.push_back(10);
+	sublists.insert(std::pair< std::string,std::vector<int> > ("camera_1",testsubs));
+	*/
+	CommMessage text;
+	std::string str;
+	unsigned char obuff[SBUFFSIZE];
+	int temp;
+	std::string cmd;
+	std::map< int,std::vector<std::string> > subs;
+	
+	#ifdef vv
+	std::cout << "Server started" << std::endl;
+	#endif
+
+	while (1)
+	{
+		FD_ZERO(&rfds); // clear file descriptors from the set
+		for (size_t c = 0; c < fds.size(); c++)
+			FD_SET(fds[c], &rfds); // add file descriptor to the set
+		std::sort(fds.begin(), fds.end());
+		maxfd = fds[fds.size()-1] + 1; // check here
+		if ((ret = pselect(maxfd+1, &rfds, NULL, NULL, &t, NULL)) == -1)
+		{
+			error("pselect");
 			continue;
 		}
-		for(size_t c = 0;c < fds.size();c++){
-			if(FD_ISSET(fds[c],&rfds)){
-				if(fds[c] == pfd){
-					if ((rsize = recvfrom(pfd, (char*)buff, BUFF_SIZE, 0, &addr, &len)) == -1)
+		for (size_t c = 0; c < fds.size(); c++)
+		{
+			if (FD_ISSET(fds[c], &rfds))
+			{
+				if (fds[c] == pfd) // message from sensor
+				{
+					if ((rsize = recvfrom(pfd, (char*)buff, SBUFFSIZE, 0, &addr, &len)) == -1)
+					{
+						error("recvfrom");
 						continue;
-					else{
+					}
+					else
+					{
 						double ts = getTimeStamp();
 						std::string msg((char*)buff, rsize);
 						SensorMessage sensormsg = SensorMessage(msg, ts);
-						if (!sensormsg.parse()){
-							std::cout << "Parsing failed" << std::endl;
+						if (!sensormsg.parse())
+						{
+							std::cerr << "sensor message parsing failed" << std::endl;
 							continue;
 						}
-						else{
+						else // message successfully received
+						{
+							#ifdef vv
 							sensormsg.printValues();
+							#endif
 
+							// log message
 							if (sensormsg.sensortype == CAMERA)
 								logCamSensorData(sensormsg);
 							else
 								logSensorData(sensormsg);
 
-							if(std::find(sensors.begin(),sensors.end(),sensormsg.deviceid) == sensors.end()){
+							if (std::find(sensors.begin(), sensors.end(), sensormsg.deviceid) == sensors.end()) // new sensor
 								sensors.push_back(sensormsg.deviceid);
-							}
-							else {
-								std::vector<int> t = list.find(sensormsg.deviceid)->second;
-								std::cout<<t.size()<<std::endl;
-								for(std::vector<int>::iterator itr = t.begin();itr != t.end();itr++){
+							else // old sensor
+							{
+								std::vector<int> subs = sublists.find(sensormsg.deviceid)->second; // subscribers to this sensor
+								#ifdef vv
+								std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
+								#endif
+								for (std::vector<int>::const_iterator it = subs.begin(); it != subs.end(); it++)
+								{
 									text.updateServerID("server334");
 									text.updateCount(1);
 									text.updateSize(rsize);
@@ -127,67 +173,93 @@ int main(int argc,char *argv[]){
 									tt.push_back(sensormsg.deviceid);
 									text.updateDeviceIDs(tt);
 									str = text.createUpdatesMessage();
-									std::cout<<str<<std::endl;
-									memcpy((char *)obuff,str.c_str(),str.size());
-									memcpy((char *)obuff + str.size(),buff,rsize);				
-									send((*itr),(char*)obuff,rsize+str.size(),0);
-									std::cout<<obuff<<std::endl;
+									memset(obuff, 0, SBUFFSIZE); // clear previous messages
+									memcpy((char*)obuff, str.c_str(), str.size());
+									if (sensormsg.sensortype == CAMERA)
+									{
+										if (sensormsg.sensordata == "NO_MOTION")
+											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
+										else // append binary data
+										{
+											unsigned char camdata[sensormsg.datasize];
+											sensormsg.camDataToArray(camdata);
+											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
+										}
+									}
+									else
+										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
+									send((*it), (char*)obuff, rsize + str.size(), 0);
+									#ifdef vv
+									std::cout << "Sent message: " << std::endl << obuff << std::endl;
+									#endif
 								}
 							}
-						}					
+						}
 					}
 				}
-				else if(fds[c] == sfd){
-					temp = accept(sfd,NULL,NULL);	
+				else if (fds[c] == sfd) // data from binary protocol
+				{
+					temp = accept(sfd, NULL, NULL);
 					fds.push_back(temp);
 				}
-				else {
-					rsize = recv(fds[c],(char *)buff,BUFF_SIZE,0);
+				else
+				{
+					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
+					#ifdef vv
 					text.print();
+					#endif
 					text.parse();
 					cmd = text.getCommand();
-					if(cmd == "LIST"){
+					if(cmd == "LIST")
+					{
 						// Create text message
 						text.updateServerID("server334");
 						text.updateDeviceIDs(sensors);
 						str = text.createListReply();
-						memcpy((char *)buff,str.c_str(),str.size());
-						send(fds[c],(char *)buff,str.size(),0);					
-					}		
-					else if(cmd == "SUBSCRIBE"){
-						//
+						memcpy((char *)buff, str.c_str(), str.size());
+						send(fds[c], (char *)buff, str.size(), 0);
+					}
+					else if(cmd == "SUBSCRIBE")
+					{
 						subs.insert(std::pair< int,std::vector<std::string> >(fds[c],text.getDeviceIDs()));
-						// 	
 						#ifdef vv
-						std::cout<<"Subs"<<std::endl;
+						std::cout << "Subs" << std::endl;
 						#endif
 						std::vector<int> ti;
 						ti.push_back(fds[c]);
-						std::cout<<ti.size()<<std::endl;					
+						#ifdef vv
+						std::cout << ti.size() << std::endl;
+						#endif
 						std::vector<std::string> ts;
 						ts = text.getDeviceIDs();
-						std::cout<<ts.size()<<std::endl;
-						for(std::vector<std::string>::iterator itr = ts.begin();itr != ts.end();itr++){
-							std::cout<<*itr<<std::endl;
-							list.insert(std::pair< std::string,std::vector<int> > (*itr,ti));
-						} 
+						#ifdef vv
+						std::cout << ts.size() << std::endl;
+						#endif
+						for (std::vector<std::string>::iterator itr = ts.begin(); itr != ts.end(); itr++)
+						{
+							#ifdef vv
+							std::cout << *itr << std::endl;
+							#endif
+							sublists.insert(std::pair< std::string,std::vector<int> > (*itr,ti));
+						}
 						text.updateServerID("server334");
 						str = text.createSubscribeReply();
-						memcpy((char *)buff,str.c_str(),str.size());
-						send(fds[c],(char *)buff,str.size(),0);							
+						memcpy((char *)buff, str.c_str(), str.size());
+						send(fds[c], (char *)buff, str.size(), 0);
 					}
-					else if(cmd == "UNSUBSCRBE"){
+					else if(cmd == "UNSUBSCRBE")
+					{
 						subs.erase(fds[c]);
 						text.updateServerID("server334");
 						str = text.createUnsubscribeReply();
-						memcpy((char *)buff,str.c_str(),str.size());
-						send(fds[c],(char *)buff,str.size(),0);	
+						memcpy((char *)buff, str.c_str(), str.size());
+						send(fds[c], (char *)buff, str.size(), 0);
 					}
 				}
-			}		
-		}			
+			}
+		}
 	}
-		
+
 	return 0;
 }

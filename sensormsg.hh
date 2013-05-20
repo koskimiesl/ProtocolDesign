@@ -21,6 +21,7 @@ public:
 	std::string parseValue(const std::string fieldname) const;
 	unsigned int hexToUInt(const std::string hexstr) const;
 	unsigned int escSeqToUInt(const std::string escseqstr) const;
+	void camDataToArray(unsigned char* camdata) const;
 	void printValues() const;
 	void printMessage() const;
 

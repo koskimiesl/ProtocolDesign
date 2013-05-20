@@ -1,7 +1,8 @@
-#include "sensormsg.hh"
 #include <fstream>
 #include <iostream>
 #include <sstream>
+
+#include "sensormsg.hh"
 
 SensorMessage::SensorMessage(const std::string message, double receivets) : message(message), receivets(receivets)
 { }
@@ -244,6 +245,20 @@ unsigned int SensorMessage::escSeqToUInt(const std::string escseq) const
 		}
 	}
 	return value;
+}
+
+void SensorMessage::camDataToArray(unsigned char* camdata) const
+{
+	size_t i = 0;
+	std::vector<unsigned char>::const_iterator it = camsensordata.begin();
+	while (i < datasize and it != camsensordata.end())
+	{
+		camdata[i] = *it;
+		i++;
+		it++;
+	}
+	if (i != datasize)
+		std::cerr << "Wrong number of bytes copied to array" << std::endl;
 }
 
 void SensorMessage::printValues() const
