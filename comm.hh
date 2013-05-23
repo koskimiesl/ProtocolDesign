@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
+#include <ctime>
 
 class CommMessage
 {
@@ -23,6 +24,7 @@ public:
 	std::string getVersion();
 	std::string getClientID();
 	std::string getServerID();
+	std::string getTimeStamp();
 	size_t getCount();
 	size_t getSize();
 	std::vector<std::string> getDeviceIDs();
@@ -53,6 +55,7 @@ private:
 	std::string version;
 	std::string clientID;
 	std::string serverID;
+	std::string timestamp;	
 	size_t count;
 	std::vector<std::string> deviceIDs;
 	size_t size; // in bytes

@@ -5,6 +5,7 @@ CommMessage::CommMessage(){
 	command = "";
 	clientID = "";
 	serverID = "";
+	timestamp = "";
 	version = "1.0";
 	count = 0;
 	size = 0;
@@ -45,6 +46,10 @@ bool CommMessage::parse(){
 			size = (size_t)strtol(tempa,NULL,10);
 			continue;	
 		}	
+		else if(sscanf(line.c_str(),"TimeStamp: %s",tempa) == 1){
+			timestamp = tempa;
+			continue;		
+		}
 	}
 	return true;
 }
@@ -77,6 +82,10 @@ std::string CommMessage::getClientID(){
 
 std::string CommMessage::getServerID(){
 	return serverID;
+}
+
+std::string CommMessage::getTimeStamp(){
+	return timestamp;
 }
 
 size_t CommMessage::getCount(){
@@ -191,10 +200,12 @@ std::string CommMessage::createUnsubscribeReply(){
 std::string CommMessage::createUpdatesMessage(){
 	std::string str;
 	std::vector<std::string>::iterator itr;	
-	std::stringstream ss,cc;
+	std::stringstream ss,cc,tt;
 	ss << size;
 	cc << count;
+	tt << std::time(NULL);
 	str = "UPDATES IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\nSize: "+ss.str()+"\r\n";
+	str += "TimeStamp: "+tt.str()+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";
 	str+="ServerID: "+serverID+"\r\n\r\n";
