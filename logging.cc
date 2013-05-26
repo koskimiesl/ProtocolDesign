@@ -34,9 +34,9 @@ void logIncomingCamData(const SensorMessage& msg, const std::string prefix)
 	binfs.close();
 }
 
-void logIncomingData(const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts)
+void logIncomingData(const std::string prefix, const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts)
 {
-	std::string filename = "client_incoming_" + deviceid + ".log";
+	std::string filename = prefix + "_incoming_" + deviceid + ".log";
 	std::ofstream fs(filename.c_str(), std::ios::out | std::ios::app);
 	fs << std::setprecision(dbl::digits10) << recvts << "\t" << sensorts << "\t";
 	fs.write(buff, datasize);
@@ -44,14 +44,14 @@ void logIncomingData(const std::string deviceid, const char* buff, size_t datasi
 	fs.close();
 }
 
-void logIncomingCamData(const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts)
+void logIncomingCamData(const std::string prefix, const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts)
 {
-	std::string filename = "client_incoming_" + deviceid + ".log";
+	std::string filename = prefix + "_incoming_" + deviceid + ".log";
 	std::ofstream fs(filename.c_str(), std::ios::out | std::ios::app);
 	fs << std::setprecision(dbl::digits10) << recvts << "\t" << sensorts << "\t" << datasize << std::endl;
 	fs.close();
 
-	std::string binfilename = "client_incoming_" + deviceid + ".data";
+	std::string binfilename = prefix + "_incoming_" + deviceid + ".data";
 	std::ofstream binfs(binfilename.c_str(), std::ios::out | std::ios::binary | std::ios::app);
 	binfs.write(buff, datasize);
 	binfs.close();
