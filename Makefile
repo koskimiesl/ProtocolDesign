@@ -2,12 +2,12 @@ CPP = g++
 CC = gcc
 CFLAGS = -lncurses -pthread
 
-objects_client = comm.o client.o screen.o
-objects_clientb = icp.o state.o helpers.o clientb.o
-objects_server = comm.o sensormsg.o server.o logging.o
-objects_serverb = icp.o state.o helpers.o serverb.o list.o
+objects_client = comm.o client.o screen.o helpers.o
+objects_clientb = icp.o state.o help.o clientb.o 
+objects_server = comm.o sensormsg.o server.o logging.o helpers.o
+objects_serverb = icp.o state.o help.o serverb.o list.o
 
-objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o list.o logging.o
+objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o list.o logging.o help.o
 
 PROGS = server client serverb clientb
 
@@ -50,11 +50,14 @@ icp.o:icp.c
 state.o:state.c
 	$(CC) -c $^ $(CFLAGS) 
 
-helpers.o:helpers.c
+help.o:help.c
 	$(CC) -c $^ $(CFLAGS)
 
 list.o:list.c
 	$(CC) -c $^ $(CFLAGS)
+
+helpers.o:helpers.cc
+	$(CPP) -c $^ $(CFLAGS)
 
 sensormsg.o:sensormsg.cc
 	$(CPP) -c $^ $(CFLAGS)
