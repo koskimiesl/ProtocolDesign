@@ -122,6 +122,10 @@ void CommMessage::updateSize(size_t s){
 	size = s;
 }
 
+void CommMessage::updateTimeStamp(std:string t){
+	timestamp = t;
+}
+
 void CommMessage::updateDeviceIDs(std::vector<std::string> dIDs){
 	std::vector<std::string>::iterator itr;
 	deviceIDs.clear();	
@@ -200,12 +204,11 @@ std::string CommMessage::createUnsubscribeReply(){
 std::string CommMessage::createUpdatesMessage(){
 	std::string str;
 	std::vector<std::string>::iterator itr;	
-	std::stringstream ss,cc,tt;
+	std::stringstream ss,cc;
 	ss << size;
 	cc << count;
-	tt << std::time(NULL);
 	str = "UPDATES IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\nSize: "+ss.str()+"\r\n";
-	str += "TimeStamp: "+tt.str()+"\r\n";
+	str += "TimeStamp: "+timestamp+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";
 	str+="ServerID: "+serverID+"\r\n\r\n";

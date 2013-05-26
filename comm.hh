@@ -47,6 +47,7 @@ public:
 	void updateServerID(std::string sID);
 	void updateCount(size_t count);
 	void updateSize(size_t size);
+	void updateTimeStamp(std::string t);
 	void updateDeviceIDs(std::vector<std::string> dIdDs);
   
 private:
