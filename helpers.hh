@@ -17,10 +17,12 @@
 #define PORTLEN 10
 //#define vv
 
-void error(std::string msg);
+int bindAndListenUnixS(int fd, const std::string sockpath);
 int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
-double getTimeStamp(); // elapsed time since Epoch in millisecond precision
+void error(std::string msg);
 int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t portlen);
+double getTimeStamp(); // elapsed time since Epoch in millisecond precision
+
 
 #endif

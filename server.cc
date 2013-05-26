@@ -11,7 +11,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// create subscribe socket
+	// create subscribe socket (UNIX domain)
 	int sfd;
 	if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 	{
@@ -64,22 +63,10 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// bind and listen subscribe socket (UNIX domain)
-	struct sockaddr_un local;
-	memset(&local, 0, sizeof(struct sockaddr_un));
-	local.sun_family = AF_UNIX;
-	strcpy(local.sun_path, SOCKPATH);
-	unlink(local.sun_path); // remove the file if it already exists
-	int length;
-	length = sizeof(local.sun_family) + strlen(local.sun_path);
-	if ((bind(sfd, (struct sockaddr*)&local, length)) == -1)
+	// bind and listen subscribe socket
+	if (bindAndListenUnixS(sfd, SOCKPATH) == -1)
 	{
-		error("bind subscribe socket");
-		return -1;
-	}
-	if ((listen(sfd, 5)) == -1)
-	{
-		error("listen subscribe socket");
+		std::cerr << "failed to bind and listen UNIX socket" << std::endl;
 		return -1;
 	}
 
@@ -100,9 +87,8 @@ int main(int argc, char *argv[])
 	std::vector<std::string> sensors; // list of active sensors (device IDs)
 	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
 	CommMessage text;
-	std::string str;
 	unsigned char obuff[SBUFFSIZE];
-	int temp;
+	std::string str;
 	std::string cmd;
 	
 	#ifdef vv
@@ -160,7 +146,7 @@ int main(int argc, char *argv[])
 							{
 								std::vector<int> subs = sublists.find(sensormsg.deviceid)->second; // subscribers to this sensor
 								#ifdef vv
-								//std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
+								std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
 								#endif
 								for (std::vector<int>::const_iterator it = subs.begin(); it != subs.end(); it++)
 								{
@@ -197,24 +183,15 @@ int main(int argc, char *argv[])
 										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
 									}
 									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
-									std::cout << sensormsg.datasize << std::endl;
-									std::cout << sensormsg.datasize + str.size() << std::endl;
-									while(1);
 								}
 							}
 						}
 					}
 				}
 				else if (fds[c] == sfd) // connection from new client
-				{
-					temp = accept(sfd, NULL, NULL);
-					fds.push_back(temp);
-				}
+					fds.push_back(accept(sfd, NULL, NULL));
 				else // data from existing client
 				{
-					#ifdef vv
-					//std::cout << "Data from existing client" << std::endl;
-					#endif
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
 					#ifdef vv
@@ -224,6 +201,9 @@ int main(int argc, char *argv[])
 					cmd = text.getCommand();
 					if (cmd == "LIST")
 					{
+						#ifdef vv
+						std::cout << "LIST message" << std::endl;
+						#endif
 						text.updateServerID("server334");
 						text.updateDeviceIDs(sensors);
 						str = text.createListReply();
@@ -233,7 +213,7 @@ int main(int argc, char *argv[])
 					else if (cmd == "SUBSCRIBE")
 					{
 						#ifdef vv
-						//std::cout << "SUBSCRIBE message" << std::endl;
+						std::cout << "SUBSCRIBE message" << std::endl;
 						#endif
 						std::vector<std::string> devsToSub = text.getDeviceIDs(); // devices to subscribe
 						std::vector<std::string>::const_iterator it;
@@ -248,7 +228,7 @@ int main(int argc, char *argv[])
 							if ((itr = sublists.find(*it)) == sublists.end()) // no subscribers to this sensor
 							{
 								#ifdef vv
-								//std::cout << "No previous subscribers" << std::endl;
+								std::cout << "No previous subscribers" << std::endl;
 								#endif
 								std::vector<int> clients; // create new list of clients subscribed to this sensor
 								clients.push_back(fds[c]);
@@ -257,7 +237,7 @@ int main(int argc, char *argv[])
 							else // sensor has subscribers
 							{
 								#ifdef vv
-								//std::cout << "Sensor has subscribers" << std::endl;
+								std::cout << "Sensor has subscribers" << std::endl;
 								#endif
 								if (std::find(itr->second.begin(), itr->second.end(), fds[c]) == itr->second.end())
 								{
@@ -287,6 +267,5 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-
 	return 0;
 }
