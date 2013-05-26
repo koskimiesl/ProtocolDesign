@@ -21,5 +21,6 @@ void error(std::string msg);
 int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
 double getTimeStamp(); // elapsed time since Epoch in millisecond precision
+int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t portlen);
 
 #endif

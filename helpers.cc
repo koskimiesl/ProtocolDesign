@@ -95,3 +95,27 @@ double getTimeStamp()
 	ss >> timestamp;
 	return timestamp;
 }
+
+int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t portlen)
+{
+	char opt;
+	// Parse command line options
+	while ((opt = getopt(argc, argv, "s:p:")) != -1)
+	{
+		switch (opt)
+		{
+			case 's':
+				strncpy(sport, optarg, PORTLEN);
+				break;
+			case 'p':
+				strncpy(pport, optarg, PORTLEN);
+				break;
+			case '?':
+				return -1;
+			default:
+				return -1;
+		}
+	}
+	return 0;
+}
+

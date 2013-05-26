@@ -26,27 +26,12 @@ int main(int argc, char *argv[])
 {
 	// parse command line options
 	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
-	//if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
-	//{
-	//	std::cerr << "failed to get command line options" << std::endl;
-	//	return -1;
-	//	}
-	char opt;
-	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:")) != -1){
-		switch(opt){
-			case 's':
-				strncpy(sport,optarg,PORTLEN);
-				break;
-			case 'p':
-				strncpy(pport,optarg,PORTLEN);
-				break;
-			case '?':
-				return -1;
-			default:
-				return -1;		
-		}
+	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
+	{
+		std::cerr << "failed to get command line options" << std::endl;
+		return -1;
 	}
+
 	// start server binary protocol process
 	pid_t pid;
 	if ((pid = fork()) < 0)
