@@ -70,9 +70,6 @@ int main(int argc,char *argv[]){
 		}
 	}
 	
-	int fd;
-	fd = open("temp1.txt",O_CREAT | O_WRONLY,0777);
-	
 	sleep(5);
 	if( (ufd = connect()) == -1)
 		return -1;
@@ -103,7 +100,6 @@ int main(int argc,char *argv[]){
 			}
 			else if(ch == 27){
 				close(ufd);
-				close(fd);
 				kill(pid,SIGINT);//capture and clear all 
 				return 0;		
 			}
@@ -165,12 +161,12 @@ int main(int argc,char *argv[]){
 			} 
 			else if(cmd == "UPDATES"){
 				//TODO
-				memcpy(tbuff,p+2,text.getSize());
-				// only test,make sensor specific file
-				write(fd,tbuff,text.getSize());
+				memcpy(tbuff,p+4,text.getSize());
+				std::vector<std::string> t = text.getDeviceIDs();
+				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
+					logIncomingData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
 				scr.status("Updates.");
-				text.print();
-				req = NONE;			
+				req = NONE;
 			}
 		}			
 	}
