@@ -1,22 +1,23 @@
-CC = g++
-CFLAGS = -std=c++98 -pthread
+CPP = g++
+CC = gcc
+CFLAGS = -lncurses -pthread
 
-objects_client = comm.o icp.o state.o helpers.o client.o screen.o
-objects_clientb = comm.o icp.o state.o helpers.o clientb.o
-objects_server = comm.o icp.o state.o helpers.o logging.o sensormsg.o server.o 
-objects_serverb = comm.o icp.o state.o helpers.o sensormsg.o serverb.o 
+objects_client = comm.o client.o screen.o
+objects_clientb = icp.o state.o helpers.o clientb.o
+objects_server = comm.o sensormsg.o server.o 
+objects_serverb = icp.o state.o helpers.o serverb.o list.o
 
-objects = comm.o icp.o state.o client.o server.o helpers.o logging.o sensormsg.o screen.o serverb.o clientb.o
+objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o list.o
 
 PROGS = server client serverb clientb
 
 all:$(PROGS)
 
 server:$(objects_server)
-	$(CC) -o server $(objects_server) $(CFLAGS) 
+	$(CPP) -o server $(objects_server) $(CFLAGS) 
 
 client:$(objects_client)
-	$(CC) -o client $(objects_client) $(CFLAGS)
+	$(CPP) -o client $(objects_client) $(CFLAGS)
 
 serverb:$(objects_serverb)
 	$(CC) -o serverb $(objects_serverb) $(CFLAGS)
@@ -24,38 +25,38 @@ serverb:$(objects_serverb)
 clientb:$(objects_clientb)
 	$(CC) -o clientb $(objects_clientb) $(CFLAGS)
 
-serverb.o:serverb.cc
+serverb.o:serverb.c
 	$(CC) -c $^ $(CFLAGS)
 
 server.o:server.cc
-	$(CC) -c $^ $(CFLAGS)
+	$(CPP) -c $^ $(CFLAGS)
 
 client.o:client.cc
-	$(CC) -c $^ $(CFLAGS)
+	$(CPP) -c $^ $(CFLAGS)
 
-clientb.o:clientb.cc
+clientb.o:clientb.c
 	$(CC) -c $^ $(CFLAGS)
 
 comm.o:comm.cc
+	$(CPP) -c $^ $(CFLAGS)
+
+icp.o:icp.c
 	$(CC) -c $^ $(CFLAGS)
 
-icp.o:icp.cc
-	$(CC) -c $^ $(CFLAGS)
-
-state.o:state.cc
+state.o:state.c
 	$(CC) -c $^ $(CFLAGS) 
 
-helpers.o:helpers.cc
+helpers.o:helpers.c
 	$(CC) -c $^ $(CFLAGS)
-	
-logging.o:logging.cc
+
+list.o:list.c
 	$(CC) -c $^ $(CFLAGS)
 
 sensormsg.o:sensormsg.cc
-	$(CC) -c $^ $(CFLAGS)
+	$(CPP) -c $^ $(CFLAGS)
 
 screen.o:screen.cc
-	$(CC) -c $^ $(CFLAGS)
+	$(CPP) -c $^ $(CFLAGS)
 
 .PHONY :clean
 
