@@ -4,10 +4,10 @@ CFLAGS = -lncurses -pthread
 
 objects_client = comm.o client.o screen.o
 objects_clientb = icp.o state.o helpers.o clientb.o
-objects_server = comm.o sensormsg.o server.o 
+objects_server = comm.o sensormsg.o server.o logging.o
 objects_serverb = icp.o state.o helpers.o serverb.o list.o
 
-objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o list.o
+objects = comm.o icp.o state.o client.o server.o helpers.o sensormsg.o screen.o serverb.o clientb.o list.o logging.o
 
 PROGS = server client serverb clientb
 
@@ -38,6 +38,10 @@ clientb.o:clientb.c
 	$(CC) -c $^ $(CFLAGS)
 
 comm.o:comm.cc
+	$(CPP) -c $^ $(CFLAGS)
+
+
+logging.o:logging.cc
 	$(CPP) -c $^ $(CFLAGS)
 
 icp.o:icp.c
