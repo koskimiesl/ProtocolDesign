@@ -4,6 +4,7 @@
 
 int main(int argc,char *argv[]){
 	unsigned char obuff[BUFF_SIZE],ibuff[BUFF_SIZE];
+	unsigned char fbuff[BUFF_SIZE];
 	int epollfd,nfds,n;
 	struct epoll_event ev,events[2];
 	struct ICP icp;
@@ -21,6 +22,7 @@ int main(int argc,char *argv[]){
 	int length;
 	unsigned short s;
 	bool cnt;	
+	size_t idx;
 	memset(&local,0,sizeof(struct sockaddr_un));
 
 	if( (ufd = socket(AF_UNIX,SOCK_STREAM,0)) == -1){
@@ -73,7 +75,8 @@ int main(int argc,char *argv[]){
 				icp.ackbit = 0x01;
 				icp.cackbit = 0x01;
 				icp.kalive = 0x00;
-				icp.size = 0x00;
+				icp.frag = 0x00;
+				icp.size = 0x0000;
 				icp.seq = state.seq;
 				icp.ack = state.rack;
 				toBinary(&icp);
@@ -105,6 +108,7 @@ int main(int argc,char *argv[]){
 				icp.ackbit = 0x00;
 				icp.cackbit = 0x00;
 				icp.kalive = 0x00;
+				icp.frag = 0x00;
 				icp.size = 0x0000;
 				icp.seq = state.seq;
 				icp.ack = 0x0000;
@@ -152,6 +156,7 @@ int main(int argc,char *argv[]){
 						icp.ackbit = 0x01;
 						icp.cackbit = 0x01;
 						icp.kalive = 0x00;
+						icp.frag = 0x00;
 						icp.size = 0x0000;
 						icp.seq = state.seq;
 						icp.ack = state.rack;			
@@ -187,42 +192,41 @@ int main(int argc,char *argv[]){
 							icp.ackbit = 0x01;
 							icp.cackbit = 0x00;
 							icp.kalive = 0x00;
+							icp.frag = 0x00;
 							icp.size = 0x0000;
 							icp.ack = icp.seq;
 							icp.seq = state.seq;
 							toBinary(&icp);
 							memcpy(obuff,icp.buffer,8);
 							sendto(sfd,(char*)obuff,8,0,&d_addr,sizeof(d_addr));
-						}						
-						s = ((state.sentup)==65535)?1:(state.sentup)+1;
-						if(s == icp.seq){
-							state.sentup = s;
-							memmove(obuff,ibuff+8,icp.size);
-							send(nfd,obuff,icp.size,0);
+						}			
+						// store			
+						memmove(obuff,ibuff+8,icp.size);
+						addInPacketToState(&state,obuff,icp.seq,icp.size,icp.frag);						
+						// Send up
+						while(1){
+							cnt = false;
 							s = ((state.sentup)==65535)?1:(state.sentup)+1;
-								while(1){
-									cnt = false;
-									s = ((state.sentup)==65535)?1:(state.sentup)+1;
-									list_for_each_safe(pos,q,&(state.in.list)){
-										queue = list_entry(pos,struct Queue,list);
-										if(queue->seq == s){
-											state.sentup = s;
-											send(nfd,queue->buffer,queue->size,0);
-											list_del(pos);
-											free(queue);
-											cnt = true;
-											break;				
-										}
-									}				
-									if(!cnt)
+							list_for_each_safe(pos,q,&(state.in.list)){
+								queue = list_entry(pos,struct Queue,list);
+								if(queue->seq == s){
+									state.sentup = s;
+									memcpy(fbuff+idx,queue->buffer,queue->size);
+									idx += queue->size;
+									if(!(queue->frag)){
+										send(nfd,fbuff,idx,0);
+										idx = 0;									
+									}
+									list_del(pos);
+									free(queue);
+									cnt = true;
 									break;				
-							}
+								}
+							}				
+							if(!cnt)
+								break;				
 						}
-						else {
-							memmove(obuff,ibuff+8,icp.size);
-							addInPacketToState(&state,obuff,icp.seq,icp.size);
-						}
-					}
+					}	
 				}
 			}
             else if(events[n].data.fd == nfd){

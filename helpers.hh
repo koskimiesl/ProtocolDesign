@@ -13,7 +13,7 @@
 #include<netdb.h>
 #include<iostream>
 
-#define BUFF_SIZE 10000
+#define BUFF_SIZE 65535
 #define PORTLEN 10
 //#define vv
 

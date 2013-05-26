@@ -122,7 +122,7 @@ void CommMessage::updateSize(size_t s){
 	size = s;
 }
 
-void CommMessage::updateTimeStamp(std:string t){
+void CommMessage::updateTimeStamp(std::string t){
 	timestamp = t;
 }
 

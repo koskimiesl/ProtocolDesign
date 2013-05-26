@@ -11,6 +11,7 @@ struct ICP {
     unsigned char ackbit;            /* AB: 1 bit */
     unsigned char cackbit;           /* CAB: 1 bit */
 	unsigned char kalive;     		 /* KAB: 1 bit */
+	unsigned char frag;				 /* FB: 1 bit */
     unsigned short size;    		 /* Size: 16 bits */
     unsigned short seq;     		 /* Sequence: 16 bits */
     unsigned short ack;     		 /* Acknowledgement: 16 bits */

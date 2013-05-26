@@ -11,7 +11,7 @@
 #include<stdio.h>
 #include<unistd.h>
 
-#define BUFF_SIZE 1000
+#define BUFF_SIZE 65535
 #define PORTLEN 10
 //#define vv
 

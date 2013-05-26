@@ -28,6 +28,7 @@ struct Int {
 struct Queue {
 	struct list_head list;
 	unsigned short seq;
+	unsigned char frag;	
 	size_t size;
 	struct timeval st;
 	unsigned char buffer[1500];
@@ -61,5 +62,5 @@ struct State * findState_fd(struct State * state,int fd);
 void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned char cackbit);
 bool ackThat(struct State * state,unsigned short a);
 void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size);
-void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size);
+void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size,unsigned char frag);
 #endif

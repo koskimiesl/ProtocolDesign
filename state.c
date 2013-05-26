@@ -103,16 +103,18 @@ void addOutPacketToState(struct State * state,unsigned char * packet,unsigned sh
 	tmp = (struct Queue *)malloc(sizeof(struct Queue));
 	memcpy(tmp->buffer,packet,size);
 	tmp->seq = seq;
+	tmp->frag = 0x00;
  	tmp->size = size;
 	gettimeofday(&(tmp->st),NULL);
 	list_add_tail(&(tmp->list),&((state->out).list));		
 }
 
-void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size){
+void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size,unsigned char frag){
 	struct Queue * tmp;
 	tmp = (struct Queue *)malloc(sizeof(struct Queue));
 	memcpy(tmp->buffer,packet,size);
 	tmp->seq = seq;
 	tmp->size = size;
+	tmp->frag = frag;
 	list_add_tail(&(tmp->list),&((state->in).list));	
 }

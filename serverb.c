@@ -39,6 +39,7 @@ int main(int argc,char *argv[]){
 	struct list_head * pos,*idx,*q;	
 	int sfd;
 	bool cnt;
+	size_t k;
 	
 	len = sizeof(addr);
 	
@@ -74,6 +75,7 @@ int main(int argc,char *argv[]){
 					icp.ackbit = 0x00;
 					icp.cackbit = 0x00;
 					icp.kalive = 0x00;
+					icp.frag = 0x00;
 					icp.size = 0x00;
 					icp.seq = state->seq;
 					icp.ack = state->rack;
@@ -114,6 +116,7 @@ int main(int argc,char *argv[]){
 						icp.ackbit = 0x01;
 						icp.cackbit = 0x01;
 						icp.kalive = 0x00;
+						icp.frag = 0x00;
 						icp.size = 0x0000;
 						icp.seq = tmp->seq;
 						icp.ack = tmp->rack;
@@ -157,6 +160,7 @@ int main(int argc,char *argv[]){
 								icp.ackbit = 0x01;
 								icp.cackbit = 0x00;
 								icp.kalive = 0x00;
+								icp.frag = 0x00;						
 								icp.size = 0x0000;
 								icp.ack = icp.seq;
 								icp.seq = tmp->seq;
@@ -191,7 +195,7 @@ int main(int argc,char *argv[]){
 							}
 							else {
 								memmove(obuff,ibuff+8,icp.size);
-								addInPacketToState(tmp,obuff,icp.seq,icp.size);
+								addInPacketToState(tmp,obuff,icp.seq,icp.size,icp.frag);
 							}							
 						}
 					}
@@ -200,30 +204,62 @@ int main(int argc,char *argv[]){
 			else {
 				if((tmp = findState_fd(&state_list,events[n].data.fd)) != NULL){
 					if( (rsize = recv(events[n].data.fd,(char *)ibuff,BUFF_SIZE,0)) > 0){
-						// Update seq
-						tmp->seq=(tmp->seq==65535)?1:tmp->seq+1;
-						// Update
-						icp.version = 0x01;
-						icp.startbit = 0x00;
-						icp.endbit = 0x00;
-						if(tmp->ackreq){
-							icp.ackbit = 0x01;
-							icp.cackbit = 0x01;
-							tmp->ackreq = false;
+						if(rsize <= 1000){
+							// Update seq
+							tmp->seq=(tmp->seq==65535)?1:tmp->seq+1;
+							// Update
+							icp.version = 0x01;
+							icp.startbit = 0x00;
+							icp.endbit = 0x00;
+							if(tmp->ackreq){
+								icp.ackbit = 0x01;
+								icp.cackbit = 0x01;
+								tmp->ackreq = false;
+							}
+							else {
+								icp.ackbit = 0x00;
+								icp.cackbit = 0x00;
+							}
+							icp.kalive = 0x00;
+							icp.frag = 0x00;						
+							icp.size = rsize;
+							icp.seq = tmp->seq;
+							icp.ack = tmp->rack;
+							toBinary(&icp);
+							printf("<-- %d %d %d %d %d\n",(int)(icp.ackbit),(int)(icp.cackbit),icp.size,icp.seq,icp.ack); 
+							memcpy(obuff,icp.buffer,8);
+							memcpy(obuff+8,ibuff,rsize);
+							sendto(sfd,(char*)obuff,8+rsize,0,&(tmp->addr),tmp->len);
 						}
 						else {
-							icp.ackbit = 0x00;
-							icp.cackbit = 0x00;
-						}
-						icp.kalive = 0x00;
-						icp.size = rsize;
-						icp.seq = tmp->seq;
-						icp.ack = tmp->rack;
-						toBinary(&icp);
-						printf("<-- %d %d %d %d %d\n",(int)(icp.ackbit),(int)(icp.cackbit),icp.size,icp.seq,icp.ack); 
-						memcpy(obuff,icp.buffer,8);
-						memcpy(obuff+8,ibuff,rsize);
-						sendto(sfd,(char*)obuff,8+rsize,0,&(tmp->addr),tmp->len);				
+							for(k = 0;k <= (int)(rsize/1000);k++){
+								// Update seq
+								tmp->seq=((tmp->seq)==65535)?1:(tmp->seq)+1;
+								// UPdate
+								icp.version = 0x01;
+								icp.startbit = 0x00;
+								icp.endbit = 0x00;
+								if(tmp->ackreq){
+									icp.ackbit = 0x01;
+									icp.cackbit = 0x01;
+									tmp->ackreq = false;
+								}
+								else {
+									icp.ackbit = 0x00;
+									icp.cackbit = 0x00;								
+								}
+								icp.kalive = 0x00;
+								icp.frag = (k==(int)(rsize/1000))?0x00:0x01;
+								icp.size = (k==(int)(rsize/1000))?rsize%1000:1000;
+								icp.seq = tmp->seq;
+								icp.ack = tmp->rack;
+								toBinary(&icp);
+								printf("<-- %d %d %d %d %d %d\n",(int)(icp.ackbit),(int)(icp.cackbit),(int)(icp.frag),icp.size,icp.seq,icp.ack);
+								memcpy(obuff,icp.buffer,8);
+								memcpy(obuff+8,ibuff+(k*1000),icp.size);
+								sendto(sfd,(char*)obuff,8+icp.size,0,&(tmp->addr),tmp->len);
+							}
+						}				
 					}
 					else if(rsize == 0){
 					}

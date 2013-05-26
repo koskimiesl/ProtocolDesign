@@ -11,7 +11,7 @@ int whichEndian(){
 
 void toBinary(struct ICP * icp){
     unsigned char * ptr;
-    icp->buffer[0] = (icp->version << 6)|(icp->startbit << 5)|(icp->endbit << 4)|(icp->ackbit << 3)|(icp->cackbit << 2)|(icp->kalive << 1);
+    icp->buffer[0] = (icp->version << 6)|(icp->startbit << 5)|(icp->endbit << 4)|(icp->ackbit << 3)|(icp->cackbit << 2)|(icp->kalive << 1) | (icp->frag);
     icp->buffer[1] = 0;
     ptr = (unsigned char *)&icp->size;
     icp->buffer[2 + whichEndian()] = *ptr;
@@ -32,6 +32,7 @@ void toValues(struct ICP * icp){
     icp->ackbit = (icp->buffer[0]&0x08) >> 3;
     icp->cackbit = (icp->buffer[0]&0x04) >> 2;
 	icp->kalive = (icp->buffer[0]&0x02) >> 1;
+	icp->frag = (icp->buffer[0]&0x01);
     ptr = (unsigned char *)&icp->size;
     *(ptr + whichEndian()) = icp->buffer[2];
     *(ptr + 1 - whichEndian()) = icp->buffer[3];
