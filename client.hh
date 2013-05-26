@@ -5,6 +5,7 @@
 #include<cstdlib>
 #include<cstring>
 #include<queue>
+#include<string>
 
 #include<sys/socket.h>
 #include<sys/types.h>
@@ -21,6 +22,7 @@
 #include"helpers.hh"
 #include"comm.hh"
 #include"screen.hh"
+#include"logging.hh"
 
 #define IPLEN 20
 #define PORTLEN 10

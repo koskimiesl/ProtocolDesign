@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 						else // message successfully received
 						{
 							#ifdef vv
-							sensormsg.printValues();
+							//sensormsg.printValues();
 							#endif
 
 							// log message
@@ -160,7 +160,7 @@ int main(int argc, char *argv[])
 							{
 								std::vector<int> subs = sublists.find(sensormsg.deviceid)->second; // subscribers to this sensor
 								#ifdef vv
-								std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
+								//std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
 								#endif
 								for (std::vector<int>::const_iterator it = subs.begin(); it != subs.end(); it++)
 								{
@@ -196,7 +196,10 @@ int main(int argc, char *argv[])
 										double ts = getTimeStamp();
 										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
 									}
-									send((*it), (char*)obuff, rsize + str.size(), 0);
+									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
+									std::cout << sensormsg.datasize << std::endl;
+									std::cout << sensormsg.datasize + str.size() << std::endl;
+									while(1);
 								}
 							}
 						}
@@ -210,7 +213,7 @@ int main(int argc, char *argv[])
 				else // data from existing client
 				{
 					#ifdef vv
-					std::cout << "Data from existing client" << std::endl;
+					//std::cout << "Data from existing client" << std::endl;
 					#endif
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
@@ -230,7 +233,7 @@ int main(int argc, char *argv[])
 					else if (cmd == "SUBSCRIBE")
 					{
 						#ifdef vv
-						std::cout << "SUBSCRIBE message" << std::endl;
+						//std::cout << "SUBSCRIBE message" << std::endl;
 						#endif
 						std::vector<std::string> devsToSub = text.getDeviceIDs(); // devices to subscribe
 						std::vector<std::string>::const_iterator it;
@@ -245,7 +248,7 @@ int main(int argc, char *argv[])
 							if ((itr = sublists.find(*it)) == sublists.end()) // no subscribers to this sensor
 							{
 								#ifdef vv
-								std::cout << "No previous subscribers" << std::endl;
+								//std::cout << "No previous subscribers" << std::endl;
 								#endif
 								std::vector<int> clients; // create new list of clients subscribed to this sensor
 								clients.push_back(fds[c]);
@@ -254,7 +257,7 @@ int main(int argc, char *argv[])
 							else // sensor has subscribers
 							{
 								#ifdef vv
-								std::cout << "Sensor has subscribers" << std::endl;
+								//std::cout << "Sensor has subscribers" << std::endl;
 								#endif
 								if (std::find(itr->second.begin(), itr->second.end(), fds[c]) == itr->second.end())
 								{

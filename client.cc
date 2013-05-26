@@ -164,7 +164,10 @@ int main(int argc,char *argv[]){
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
 				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
-					logIncomingData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+					if (itr->find("camera") == std::string::npos)
+						logIncomingData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+					else
+						logIncomingCamData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
 				scr.status("Updates.");
 				req = NONE;
 			}
