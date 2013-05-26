@@ -98,18 +98,12 @@ int main(int argc, char *argv[])
 	socklen_t len;
 	len = sizeof(struct sockaddr);
 	std::vector<std::string> sensors; // list of active sensors (device IDs)
-	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to subscriber lists
-	/*
-	std::vector<int> testsubs;
-	testsubs.push_back(10);
-	sublists.insert(std::pair< std::string,std::vector<int> > ("camera_1",testsubs));
-	*/
+	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
 	CommMessage text;
 	std::string str;
 	unsigned char obuff[SBUFFSIZE];
 	int temp;
 	std::string cmd;
-	std::map< int,std::vector<std::string> > subs;
 	
 	#ifdef vv
 	std::cout << "server started" << std::endl;
@@ -172,10 +166,11 @@ int main(int argc, char *argv[])
 								{
 									text.updateServerID("server334");
 									text.updateCount(1);
-									text.updateSize(rsize);
+									text.updateSize(sensormsg.datasize);
 									std::vector<std::string> tt;
 									tt.push_back(sensormsg.deviceid);
 									text.updateDeviceIDs(tt);
+									text.updateTimeStamp(sensormsg.sensorts);
 									str = text.createUpdatesMessage();
 									memset(obuff, 0, SBUFFSIZE); // clear previous messages
 									memcpy((char*)obuff, str.c_str(), str.size());
@@ -207,13 +202,16 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-				else if (fds[c] == sfd) // data from binary protocol
+				else if (fds[c] == sfd) // connection from new client
 				{
 					temp = accept(sfd, NULL, NULL);
 					fds.push_back(temp);
 				}
-				else
+				else // data from existing client
 				{
+					#ifdef vv
+					std::cout << "Data from existing client" << std::endl;
+					#endif
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
 					#ifdef vv
@@ -221,46 +219,62 @@ int main(int argc, char *argv[])
 					#endif
 					text.parse();
 					cmd = text.getCommand();
-					if(cmd == "LIST")
+					if (cmd == "LIST")
 					{
-						// Create text message
 						text.updateServerID("server334");
 						text.updateDeviceIDs(sensors);
 						str = text.createListReply();
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
 					}
-					else if(cmd == "SUBSCRIBE")
+					else if (cmd == "SUBSCRIBE")
 					{
-						subs.insert(std::pair< int,std::vector<std::string> >(fds[c],text.getDeviceIDs()));
 						#ifdef vv
-						std::cout << "Subs" << std::endl;
+						std::cout << "SUBSCRIBE message" << std::endl;
 						#endif
-						std::vector<int> ti;
-						ti.push_back(fds[c]);
-						#ifdef vv
-						std::cout << ti.size() << std::endl;
-						#endif
-						std::vector<std::string> ts;
-						ts = text.getDeviceIDs();
-						#ifdef vv
-						std::cout << ts.size() << std::endl;
-						#endif
-						for (std::vector<std::string>::iterator itr = ts.begin(); itr != ts.end(); itr++)
+						std::vector<std::string> devsToSub = text.getDeviceIDs(); // devices to subscribe
+						std::vector<std::string>::const_iterator it;
+						for (it = devsToSub.begin(); it != devsToSub.end(); it++)
 						{
-							#ifdef vv
-							std::cout << *itr << std::endl;
-							#endif
-							sublists.insert(std::pair< std::string,std::vector<int> > (*itr,ti));
+							if (std::find(sensors.begin(), sensors.end(), *it) == sensors.end())
+							{
+								std::cerr << "Invalid device ID in SUBSCRIBE message" << std::endl;
+								continue;
+							}
+							std::map< std::string, std::vector<int> >::iterator itr;
+							if ((itr = sublists.find(*it)) == sublists.end()) // no subscribers to this sensor
+							{
+								#ifdef vv
+								std::cout << "No previous subscribers" << std::endl;
+								#endif
+								std::vector<int> clients; // create new list of clients subscribed to this sensor
+								clients.push_back(fds[c]);
+								sublists.insert(std::pair< std::string, std::vector<int> >(*it, clients));
+							}
+							else // sensor has subscribers
+							{
+								#ifdef vv
+								std::cout << "Sensor has subscribers" << std::endl;
+								#endif
+								if (std::find(itr->second.begin(), itr->second.end(), fds[c]) == itr->second.end())
+								{
+									itr->second.push_back(fds[c]);
+								}
+								else // client has already subscribed to this sensor
+								{
+									std::cerr << "Client has already subscribed to this sensor" << std::endl;
+									continue;
+								}
+							}
 						}
 						text.updateServerID("server334");
 						str = text.createSubscribeReply();
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
 					}
-					else if(cmd == "UNSUBSCRBE")
+					else if(cmd == "UNSUBSCRIBE")
 					{
-						subs.erase(fds[c]);
+						// TODO
 						text.updateServerID("server334");
 						str = text.createUnsubscribeReply();
 						memcpy((char *)buff, str.c_str(), str.size());

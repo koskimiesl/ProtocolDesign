@@ -2,7 +2,7 @@ CPP = g++
 CC = gcc
 CFLAGS = -lncurses -pthread
 
-objects_client = comm.o client.o screen.o helpers.o
+objects_client = comm.o client.o screen.o logging.o helpers.o
 objects_clientb = icp.o state.o help.o clientb.o 
 objects_server = comm.o sensormsg.o server.o logging.o helpers.o
 objects_serverb = icp.o state.o help.o serverb.o list.o
