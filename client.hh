@@ -21,6 +21,7 @@
 #include"helpers.hh"
 #include"comm.hh"
 #include"screen.hh"
+#include"logging.hh"
 
 #define IPLEN 20
 #define PORTLEN 10

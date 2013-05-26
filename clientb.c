@@ -115,7 +115,7 @@ int main(int argc,char *argv[]){
 				toBinary(&icp);
 				memcpy(obuff,icp.buffer,8);
 				// add to state memory
-				// addOutPacketToState(&state,obuff,icp.seq,8);
+				addOutPacketToState(&state,obuff,icp.seq,8);
 				// send connect packet
 				sendto(sfd,(char*)obuff,8,0,&d_addr,sizeof(d_addr));
 				memcpy(&(state.addr),&d_addr,len);
@@ -254,6 +254,8 @@ int main(int argc,char *argv[]){
 					memcpy(obuff,icp.buffer,8);
 					memcpy(obuff+8,ibuff,rsize);
 					sendto(sfd,(char*)obuff,8+rsize,0,&(state.addr),state.len);							
+					// add to state memory
+					addOutPacketToState(&state,obuff,icp.seq,8+rsize);				
 				}			
 				else if(rsize == 0){
 					// sent endbit

@@ -230,6 +230,8 @@ int main(int argc,char *argv[]){
 							memcpy(obuff,icp.buffer,8);
 							memcpy(obuff+8,ibuff,rsize);
 							sendto(sfd,(char*)obuff,8+rsize,0,&(tmp->addr),tmp->len);
+							// add to state memory
+							addOutPacketToState(tmp,obuff,icp.seq,8+rsize);						
 						}
 						else {
 							for(k = 0;k <= (int)(rsize/1000);k++){
@@ -258,6 +260,8 @@ int main(int argc,char *argv[]){
 								memcpy(obuff,icp.buffer,8);
 								memcpy(obuff+8,ibuff+(k*1000),icp.size);
 								sendto(sfd,(char*)obuff,8+icp.size,0,&(tmp->addr),tmp->len);
+								// add to state memory
+								addOutPacketToState(tmp,obuff,icp.seq,8+icp.size);				
 							}
 						}				
 					}
