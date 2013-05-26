@@ -11,7 +11,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// create subscribe socket
+	// create subscribe socket (UNIX domain)
 	int sfd;
 	if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 	{
@@ -64,22 +63,10 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// bind and listen subscribe socket (UNIX domain)
-	struct sockaddr_un local;
-	memset(&local, 0, sizeof(struct sockaddr_un));
-	local.sun_family = AF_UNIX;
-	strcpy(local.sun_path, SOCKPATH);
-	unlink(local.sun_path); // remove the file if it already exists
-	int length;
-	length = sizeof(local.sun_family) + strlen(local.sun_path);
-	if ((bind(sfd, (struct sockaddr*)&local, length)) == -1)
+	// bind and listen subscribe socket
+	if (bindAndListenUnixS(sfd, SOCKPATH) == -1)
 	{
-		error("bind subscribe socket");
-		return -1;
-	}
-	if ((listen(sfd, 5)) == -1)
-	{
-		error("listen subscribe socket");
+		std::cerr << "failed to bind and listen UNIX socket" << std::endl;
 		return -1;
 	}
 
@@ -100,9 +87,8 @@ int main(int argc, char *argv[])
 	std::vector<std::string> sensors; // list of active sensors (device IDs)
 	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
 	CommMessage text;
-	std::string str;
 	unsigned char obuff[SBUFFSIZE];
-	int temp;
+	std::string str;
 	std::string cmd;
 	
 	#ifdef vv
@@ -145,7 +131,7 @@ int main(int argc, char *argv[])
 						else // message successfully received
 						{
 							#ifdef vv
-							sensormsg.printValues();
+							//sensormsg.printValues();
 							#endif
 
 							// log message
@@ -196,22 +182,16 @@ int main(int argc, char *argv[])
 										double ts = getTimeStamp();
 										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
 									}
-									send((*it), (char*)obuff, rsize + str.size(), 0);
+									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
 								}
 							}
 						}
 					}
 				}
 				else if (fds[c] == sfd) // connection from new client
-				{
-					temp = accept(sfd, NULL, NULL);
-					fds.push_back(temp);
-				}
+					fds.push_back(accept(sfd, NULL, NULL));
 				else // data from existing client
 				{
-					#ifdef vv
-					std::cout << "Data from existing client" << std::endl;
-					#endif
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
 					#ifdef vv
@@ -221,6 +201,9 @@ int main(int argc, char *argv[])
 					cmd = text.getCommand();
 					if (cmd == "LIST")
 					{
+						#ifdef vv
+						std::cout << "LIST message" << std::endl;
+						#endif
 						text.updateServerID("server334");
 						text.updateDeviceIDs(sensors);
 						str = text.createListReply();
@@ -284,6 +267,5 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
-
 	return 0;
 }

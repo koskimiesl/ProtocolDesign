@@ -5,6 +5,7 @@
 #include<cstdlib>
 #include<cstring>
 #include<queue>
+#include<string>
 
 #include<sys/socket.h>
 #include<sys/types.h>
