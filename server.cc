@@ -1,31 +1,35 @@
 /* IoTPS Server */
 
+#include <algorithm>
+#include <arpa/inet.h>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <iterator>
+#include <map>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/un.h>
 #include <unistd.h>
 #include <vector>
 
+#include "comm.hh"
 #include "helpers.hh"
+#include "logging.hh"
+#include "sensormsg.hh"
 #include "server.hh"
+
 
 int main(int argc, char *argv[])
 {
 	// parse command line options
-	int opt;
-	char pport[SPORTLEN], sport[SPORTLEN]; // publish port, subscribe port
-	while ((opt = getopt(argc, argv, "s:p:")) != -1)
+	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
+	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
 	{
-		switch (opt)
-		{
-			case 's':
-				strncpy(sport, optarg, PORTLEN);
-				break;
-			case 'p':
-				strncpy(pport, optarg, PORTLEN);
-				break;
-			case '?':
-				return -1;
-			default:
-				return -1;
-		}
+		std::cerr << "failed to get command line options" << std::endl;
+		return -1;
 	}
 
 	// start server binary protocol process
@@ -108,7 +112,7 @@ int main(int argc, char *argv[])
 	std::map< int,std::vector<std::string> > subs;
 	
 	#ifdef vv
-	std::cout << "Server started" << std::endl;
+	std::cout << "server started" << std::endl;
 	#endif
 
 	while (1)
@@ -152,9 +156,9 @@ int main(int argc, char *argv[])
 
 							// log message
 							if (sensormsg.sensortype == CAMERA)
-								logCamSensorData(sensormsg);
+								logIncomingCamData(sensormsg, "server");
 							else
-								logSensorData(sensormsg);
+								logIncomingData(sensormsg, "server");
 
 							if (std::find(sensors.begin(), sensors.end(), sensormsg.deviceid) == sensors.end()) // new sensor
 								sensors.push_back(sensormsg.deviceid);
@@ -178,20 +182,26 @@ int main(int argc, char *argv[])
 									if (sensormsg.sensortype == CAMERA)
 									{
 										if (sensormsg.sensordata == "NO_MOTION")
+										{
 											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
+											double ts = getTimeStamp();
+											logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+										}
 										else // append binary data
 										{
 											unsigned char camdata[sensormsg.datasize];
 											sensormsg.camDataToArray(camdata);
 											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
+											logOutgoingCamData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
 										}
 									}
 									else
+									{
 										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
+										double ts = getTimeStamp();
+										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+									}
 									send((*it), (char*)obuff, rsize + str.size(), 0);
-									#ifdef vv
-									std::cout << "Sent message: " << std::endl << obuff << std::endl;
-									#endif
 								}
 							}
 						}
