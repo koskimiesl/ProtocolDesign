@@ -1,3 +1,6 @@
+#include<stdlib.h>
+#include<time.h>
+
 #include"help.h"
 
 /* Returns socket */
@@ -73,3 +76,27 @@ int custom_socket(int family,const char port[]){
 	return sfd;
 }
 
+// setting q = p - 1 means independent loss, as far as I understand
+// otherwise loss is dependent of previous state
+int getNextState(int previous, double p, double q)
+{
+	if (!(previous == LOST || previous == RECEIVED)) // invalid current state
+		return -1;
+	if (p < 0 || p > 1 || q < 0 || q > 1) // invalid loss ratio
+		return -1;
+
+	if (previous == RECEIVED)
+	{
+		if (rand() <  p * ((double)RAND_MAX + 1.0))
+			return LOST;
+		else
+			return RECEIVED;
+	}
+	else
+	{
+		if (rand() < q * ((double)RAND_MAX + 1.0))
+			return LOST;
+		else
+			return RECEIVED;
+	}
+}
