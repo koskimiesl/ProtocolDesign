@@ -1,5 +1,6 @@
 /* IoTPS Client */
 #include"client.hh"
+#include"helpers.hh"
 
 int connect(){
 	int ufd;
@@ -19,7 +20,7 @@ int connect(){
 }
 
 int main(int argc,char *argv[]){
-	char ip[IPLEN],port[PORTLEN];
+	char ip[IPLEN],port[PORTLEN],id[IDLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
 	char * p;
@@ -44,7 +45,7 @@ int main(int argc,char *argv[]){
 	req = NONE;
 
 	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:")) != -1){
+	while( (opt = getopt(argc,argv, "s:p:i:")) != -1){
 		switch(opt){
 			case 's':
 				strncpy(ip,optarg,IPLEN);
@@ -52,12 +53,21 @@ int main(int argc,char *argv[]){
 			case 'p':
 				strncpy(port,optarg,PORTLEN);
 				break;
+			case 'i':
+				strncpy(id,optarg,IDLEN);
+				break;
 			case '?':
 				return -1;
 			default:
 				return -1;		
 		}
 	}
+
+	// create directory for log files
+	std::string clientid(id);
+	std::string dirname = "client_" + clientid + "_logs";
+	if (createDir(dirname) == -1)
+		return -1;
 
 	if( (pid = fork()) < 0){
 		perror("fork");
@@ -104,7 +114,7 @@ int main(int argc,char *argv[]){
 				return 0;		
 			}
 			else if(ch == 'R' || ch == 'r'){ //refresh,get sensors list	
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				std::string msg = text.createListRequest();			
 				memcpy(buff,msg.c_str(),msg.size());
 				send(ufd,buff,msg.size(),0);
@@ -112,7 +122,7 @@ int main(int argc,char *argv[]){
 				req = LIST;
 			}
 			else if(ch == 'S' || ch == 's'){
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				slist = scr.getSList();
 				text.updateDeviceIDs(slist);
 				text.updateCount(slist.size());
@@ -123,7 +133,7 @@ int main(int argc,char *argv[]){
 				req = SUBS;
 			}	
 			else if(ch == 'U' || ch == 'u'){
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				ulist = scr.getUList();
 				text.updateDeviceIDs(ulist);
 				text.updateCount(ulist.size());
@@ -163,15 +173,16 @@ int main(int argc,char *argv[]){
 				//TODO
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
+				std::string binarytest(tbuff, 9);
 				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
-					if (itr->find("camera") == std::string::npos)
-						logIncomingData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+					if (itr->find("camera") != std::string::npos && binarytest != "NO_MOTION")
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true);
 					else
-						logIncomingCamData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false);
 				scr.status("Updates.");
 				req = NONE;
 			}
-		}			
+		}
 	}
 	return 0;
 }

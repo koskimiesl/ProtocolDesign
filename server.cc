@@ -26,10 +26,11 @@ int main(int argc, char *argv[])
 	// parse command line options
 	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
 	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
-	{
-		std::cerr << "failed to get command line options" << std::endl;
 		return -1;
-	}
+
+	// create directory for log files
+	if (createDir(SLOGDIR) == -1)
+		return -1;
 
 	// start server binary protocol process
 	pid_t pid;
@@ -50,10 +51,7 @@ int main(int argc, char *argv[])
 	// create publish socket
 	int pfd;
 	if ((pfd = custom_socket(AF_INET, pport)) == -1)
-	{
-		error("create publish socket");
 		return -1;
-	}
 
 	// create subscribe socket (UNIX domain)
 	int sfd;
@@ -65,10 +63,7 @@ int main(int argc, char *argv[])
 
 	// bind and listen subscribe socket
 	if (bindAndListenUnixS(sfd, SOCKPATH) == -1)
-	{
-		std::cerr << "failed to bind and listen UNIX socket" << std::endl;
 		return -1;
-	}
 
 	fd_set rfds;
 	std::vector<int> fds;
@@ -136,9 +131,14 @@ int main(int argc, char *argv[])
 
 							// log message
 							if (sensormsg.sensortype == CAMERA)
-								logIncomingCamData(sensormsg, "server");
+							{
+								if (sensormsg.sensordata == "NO_MOTION")
+									logServerIncoming(SLOGDIR, sensormsg, false);
+								else // binary data
+									logServerIncoming(SLOGDIR, sensormsg, true);
+							}
 							else
-								logIncomingData(sensormsg, "server");
+								logServerIncoming(SLOGDIR, sensormsg, false);
 
 							if (std::find(sensors.begin(), sensors.end(), sensormsg.deviceid) == sensors.end()) // new sensor
 								sensors.push_back(sensormsg.deviceid);
@@ -166,21 +166,21 @@ int main(int argc, char *argv[])
 										{
 											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 											double ts = getTimeStamp();
-											logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 										}
 										else // append binary data
 										{
 											unsigned char camdata[sensormsg.datasize];
 											sensormsg.camDataToArray(camdata);
 											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
-											logOutgoingCamData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true);
 										}
 									}
 									else
 									{
 										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 										double ts = getTimeStamp();
-										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+										logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 									}
 									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
 								}

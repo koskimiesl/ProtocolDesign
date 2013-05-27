@@ -3,16 +3,10 @@
 
 #include "sensormsg.hh"
 
-void logIncomingData(const SensorMessage& msg, const std::string prefix);
+void logServerIncoming(const std::string dirname, const SensorMessage& msg, bool binarydata);
 
-void logIncomingCamData(const SensorMessage& msg, const std::string prefix);
+void logServerOutgoing(const std::string dirname, const std::string deviceid, const char* obuff, size_t datasize, double sendts, bool binarydata);
 
-void logIncomingData(const std::string prefix, const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts);
-
-void logIncomingCamData(const std::string prefix, const std::string deviceid, const char* buff, size_t datasize, std::string sensorts, double recvts);
-
-void logOutgoingData(const std::string deviceid, const char* obuff, size_t datasize, double sendts);
-
-void logOutgoingCamData(const std::string deviceid, const char* obuff, size_t datasize, double sendts);
+void logClientIncoming(const std::string dirname, const std::string deviceid, const char* buff, size_t datasize, const std::string sensorts, double recvts, bool binarydata);
 
 #endif

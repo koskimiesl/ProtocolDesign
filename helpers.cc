@@ -1,6 +1,8 @@
 #include <iomanip>
 #include <sstream>
+#include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/un.h>
 
 #include "helpers.hh"
@@ -17,12 +19,25 @@ int bindAndListenUnixS(int fd, const std::string sockpath)
 	length = sizeof(local.sun_family) + strlen(local.sun_path);
 	if ((bind(fd, (struct sockaddr*)&local, length)) == -1)
 	{
-		error("bind subscribe socket");
+		error("bind");
 		return -1;
 	}
 	if ((listen(fd, 5)) == -1)
 	{
-		error("listen subscribe socket");
+		error("listen");
+		return -1;
+	}
+	return 0;
+}
+
+int createDir(const std::string path)
+{
+	struct stat st;
+	if (stat(path.c_str(), &st) == 0) // path exists
+		return 0;
+	if (mkdir(path.c_str(), 0777) == -1)
+	{
+		error("create directory");
 		return -1;
 	}
 	return 0;
@@ -42,7 +57,7 @@ int custom_socket(int family,const char port[]){
 	hints.ai_next = NULL;
 
 	if( (sfd = getaddrinfo(NULL,port,&hints,&result)) != 0){
-		std::cerr<<"getaddrinfo: "<<gai_strerror(sfd)<<std::endl;
+		std::cerr<<"custom_socket: getaddrinfo: "<<gai_strerror(sfd)<<std::endl;
 		sfd = -1;
 		return sfd;
 	}
@@ -112,8 +127,8 @@ void error(std::string msg)
 
 int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t portlen)
 {
+	int n;
 	char opt;
-	// Parse command line options
 	while ((opt = getopt(argc, argv, "s:p:")) != -1)
 	{
 		switch (opt)
@@ -125,10 +140,18 @@ int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t po
 				strncpy(pport, optarg, PORTLEN);
 				break;
 			case '?':
+				std::cerr << "failed to get command line option" << std::endl;
 				return -1;
 			default:
+				std::cerr << "failed to get command line option" << std::endl;
 				return -1;
 		}
+		n++;
+	}
+	if (n != 2)
+	{
+		std::cerr << "not enough command line options given" << std::endl;
+		return -1;
 	}
 	return 0;
 }
