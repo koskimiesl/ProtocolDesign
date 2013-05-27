@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 									continue;
 								std::vector<int> subs = sublists.find(sensormsg.deviceid)->second; // subscribers to this sensor
 								#ifdef vv
-								std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
+								std::cout << "number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
 								#endif
 								for (std::vector<int>::const_iterator it = subs.begin(); it != subs.end(); it++)
 								{
@@ -199,6 +199,30 @@ int main(int argc, char *argv[])
 				{
 					memset(buff, 0, SBUFFSIZE); // clear previous messages
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
+					if (rsize == 0)
+					{
+						#ifdef vv
+						std::cout << "client closed connection, cleaning client data" << std::endl;
+						#endif
+						std::map< std::string, std::vector<int> >::iterator it;
+						for (it = sublists.begin(); it != sublists.end(); it++) // remove subscriptions for this client
+						{
+							std::vector<int>::iterator itr = std::find(it->second.begin(), it->second.end(), fds[c]);
+							if (itr != it->second.end())
+								it->second.erase(itr);
+						}
+						if (clientids.erase(fds[c]) != 1) // remove client ID
+						{
+							std::cerr << "failed to remove client ID" << std::endl;
+							return -1;
+						}
+						if (close(fds[c]) == -1)
+						{
+							perror("close");
+							return -1;
+						}
+						continue;
+					}
 					text.updateMessage((char*)buff);
 					#ifdef vv
 					text.print();
