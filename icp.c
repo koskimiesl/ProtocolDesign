@@ -44,3 +44,27 @@ void toValues(struct ICP * icp){
     *(ptr + 1 - whichEndian()) = icp->buffer[7];
 }
 
+inline void updateICP(struct ICP * icp,unsigned char sb,unsigned char eb,unsigned char ab,
+						unsigned char cab,unsigned char ka,unsigned char fr,unsigned short s,
+							unsigned short seq,unsigned short ack){
+	icp->version = 0x01;
+	icp->startbit = sb;
+	icp->endbit = eb;
+	icp->ackbit = ab;
+	icp->cackbit = cab;
+	icp->kalive = ka;
+	icp->frag = fr;
+	icp->size = s;
+	icp->seq = seq;
+	icp->ack = ack;
+}
+
+void printICPIn(struct ICP * icp){
+	printf("--> %d %d %d %d %d %d\n",(int)(icp->ackbit),(int)(icp->cackbit),
+			(int)(icp->frag),icp->size,icp->seq,icp->ack); 
+}
+
+void printICPOut(struct ICP * icp){
+	printf("<-- %d %d %d %d %d %d\n",(int)(icp->ackbit),(int)(icp->cackbit),
+			(int)(icp->frag),icp->size,icp->seq,icp->ack); 
+}

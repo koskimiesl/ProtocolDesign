@@ -12,14 +12,13 @@ int custom_socket_remote(const char ip[],const char port[],struct sockaddr * add
     hints.ai_flags = 0;    
     hints.ai_protocol = 0;          /* Any protocol */
    
-    if( (sfd = getaddrinfo(ip,port, &hints, &result)) != 0){
-    	perror("getaddrinfo: ");
-		sfd = -1;
-		return sfd;
+    if( getaddrinfo(ip,port, &hints, &result) != 0){
+    	perror("getaddrinfo, ");
+		return -1;
     }
 	for(rp = result;rp != NULL;rp = rp->ai_next){
 		if( (sfd = socket(rp->ai_family,rp->ai_socktype,rp->ai_protocol)) == -1){
-			perror("socket");
+			perror("socket, ");
 			continue;
 		}
 		else{
@@ -27,9 +26,9 @@ int custom_socket_remote(const char ip[],const char port[],struct sockaddr * add
 			break;
 		}
 	}
-	if(rp == NULL){
+	/* None worked */
+	if(rp == NULL)
 		sfd = -1;
-	}	
 
 	freeaddrinfo(result);
 
@@ -39,7 +38,7 @@ int custom_socket_remote(const char ip[],const char port[],struct sockaddr * add
 /* Returns socket. */
 int custom_socket(int family,const char port[]){
 	struct addrinfo hints,*result,*rp;
-	int sfd; //status
+	int sfd;
 	memset(&hints,0,sizeof(struct addrinfo));
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -49,29 +48,28 @@ int custom_socket(int family,const char port[]){
 	hints.ai_addr = NULL;
 	hints.ai_next = NULL;
 
-	if( (sfd = getaddrinfo(NULL,port,&hints,&result)) != 0){
-		perror("getaddrinfo: ");
-		sfd = -1;
-		return sfd;
+	if( getaddrinfo(NULL,port,&hints,&result) != 0){
+		perror("getaddrinfo, ");
+		return -1;
 	}
 	for(rp = result;rp != NULL;rp = rp->ai_next){
 		if( (sfd = socket(rp->ai_family,rp->ai_socktype,rp->ai_protocol)) == -1){
-			perror("socket");
+			perror("socket, ");
 			continue;
 		}
 		if(bind(sfd,rp->ai_addr,rp->ai_addrlen) == -1){
-			perror("bind");
+			perror("bind, ");
 			close(sfd);		
 		}
 		else
 			break;
 	}	
-	if(rp == NULL){
-		printf("Error,could not create socket");
+	/* None worked. */
+	if(rp == NULL)
 		sfd = -1;
-	}
 	
 	freeaddrinfo(result);
 	
 	return sfd;
 }
+

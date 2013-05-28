@@ -4,6 +4,7 @@
 #include<sys/socket.h>
 #include<sys/types.h>
 #include<sys/signal.h>
+#include<sys/epoll.h>
 #include<sys/un.h>
 #include<netinet/in.h>
 #include<arpa/inet.h>

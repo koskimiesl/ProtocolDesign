@@ -2,6 +2,7 @@
 #define IPC_H
 #define DEBUG
 
+#include<stdio.h>
 int whichEndian();
 
 struct ICP {
@@ -20,4 +21,9 @@ struct ICP {
 };
 void toBinary(struct ICP * icp);
 void toValues(struct ICP * icp);
+inline void updateICP(struct ICP * icp,unsigned char sb,unsigned char eb,unsigned char ab,
+						unsigned char cab,unsigned char ka,unsigned char fr,unsigned short s,
+							unsigned short seq,unsigned short ack);
+void printICPIn(struct ICP * icp);
+void printICPOut(struct ICP * icp);
 #endif

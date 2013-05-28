@@ -8,7 +8,9 @@ void initState(struct State * state){
 	state->rack = 0;
 	state->fd = 0;
 	state->sentup = 0;
+	state->sentdown = 0;
 	state->status = RC;
+	state->window = 50000;
 	INIT_LIST_HEAD(&(state->out.list));
 	INIT_LIST_HEAD(&(state->in.list));
 	INIT_LIST_HEAD(&(state->racks.list));
@@ -98,23 +100,38 @@ bool ackThat(struct State * state,unsigned short a){
 	}
 }
 
-void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size){
+void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
+							int size,unsigned char frag){
 	struct Queue * tmp;
 	tmp = (struct Queue *)malloc(sizeof(struct Queue));
+	memset(tmp,0,sizeof(struct Queue));
 	memcpy(tmp->buffer,packet,size);
 	tmp->seq = seq;
-	tmp->frag = 0x00;
- 	tmp->size = size;
+	tmp->frag = frag;
+ 	tmp->size = (unsigned short)size;
+	tmp->sent = false;
 	gettimeofday(&(tmp->st),NULL);
 	list_add_tail(&(tmp->list),&((state->out).list));		
 }
 
-void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size,unsigned char frag){
+void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
+							int size,unsigned char frag){
 	struct Queue * tmp;
 	tmp = (struct Queue *)malloc(sizeof(struct Queue));
+	memset(tmp,0,sizeof(struct Queue));
 	memcpy(tmp->buffer,packet,size);
 	tmp->seq = seq;
-	tmp->size = size;
+	tmp->size = (unsigned short)size;
 	tmp->frag = frag;
 	list_add_tail(&(tmp->list),&((state->in).list));	
 }
+
+
+bool checktime(struct timeval *pt,struct timeval *ct,size_t gap){
+	if( ((ct->tv_sec) - (pt->tv_sec)) > 0)
+		return true;
+	if( ((ct->tv_sec) - (pt->tv_sec)) == 0)
+		if( ((ct->tv_usec) - (ct->tv_usec)) > gap)
+			return true;			
+	return false;
+}	 

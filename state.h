@@ -31,21 +31,25 @@ struct Queue {
 	unsigned char frag;	
 	size_t size;
 	struct timeval st;
+	bool sent;
 	unsigned char buffer[1500];
 };
 
 struct State {
-	// data
 	struct list_head list;
 	// remote addres
 	struct sockaddr addr;
 	socklen_t len;
 	// packet info
 	unsigned short seq;
+	// sent remote
+	unsigned short sentdown;
 	// acked index
 	unsigned short ack;
 	// remote acked index 
 	unsigned short rack; // cumulative
+	struct timeval kt; // keepalive time
+	unsigned int window; 
 	struct Int racks; // individual
 	// sent to app layer
 	unsigned short sentup;
@@ -61,6 +65,9 @@ struct State * findState_addr(struct State * state,struct sockaddr * addr);
 struct State * findState_fd(struct State * state,int fd);
 void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned char cackbit);
 bool ackThat(struct State * state,unsigned short a);
-void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size);
-void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,size_t size,unsigned char frag);
+void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
+int size,unsigned char frag);
+void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
+int size,unsigned char frag);
+bool checktime(struct timeval *pt,struct timeval *ct,size_t gap);
 #endif
