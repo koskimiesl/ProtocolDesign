@@ -19,11 +19,11 @@
 #include<errno.h>
 #include<fcntl.h>
 
-#include"helpers.hh"
 #include"comm.hh"
 #include"screen.hh"
 #include"logging.hh"
 
+#define IDLEN 10
 #define IPLEN 20
 #define PORTLEN 10
 #define SOCK_PATH "echo_client"

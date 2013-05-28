@@ -26,10 +26,11 @@ int main(int argc, char *argv[])
 	// parse command line options
 	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
 	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
-	{
-		std::cerr << "failed to get command line options" << std::endl;
 		return -1;
-	}
+
+	// create directory for log files
+	if (createDir(SLOGDIR) == -1)
+		return -1;
 
 	// start server binary protocol process
 	pid_t pid;
@@ -50,10 +51,7 @@ int main(int argc, char *argv[])
 	// create publish socket
 	int pfd;
 	if ((pfd = custom_socket(AF_INET, pport)) == -1)
-	{
-		error("create publish socket");
 		return -1;
-	}
 
 	// create subscribe socket (UNIX domain)
 	int sfd;
@@ -65,10 +63,7 @@ int main(int argc, char *argv[])
 
 	// bind and listen subscribe socket
 	if (bindAndListenUnixS(sfd, SOCKPATH) == -1)
-	{
-		std::cerr << "failed to bind and listen UNIX socket" << std::endl;
 		return -1;
-	}
 
 	fd_set rfds;
 	std::vector<int> fds;
@@ -87,9 +82,10 @@ int main(int argc, char *argv[])
 	std::vector<std::string> sensors; // list of active sensors (device IDs)
 	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
 	CommMessage text;
-	unsigned char obuff[SBUFFSIZE];
+	unsigned char obuff[SBUFFSIZE]; // send buffer
 	std::string str;
 	std::string cmd;
+	int temp;
 	
 	#ifdef vv
 	std::cout << "server started" << std::endl;
@@ -130,20 +126,22 @@ int main(int argc, char *argv[])
 						}
 						else // message successfully received
 						{
-							#ifdef vv
-							//sensormsg.printValues();
-							#endif
-
 							// log message
 							if (sensormsg.sensortype == CAMERA)
-								logIncomingCamData(sensormsg, "server");
+							{
+								if (sensormsg.sensordata == "NO_MOTION")
+									logServerIncoming(SLOGDIR, sensormsg, false);
+								else // binary data
+									logServerIncoming(SLOGDIR, sensormsg, true);
+							}
 							else
-								logIncomingData(sensormsg, "server");
-
+								logServerIncoming(SLOGDIR, sensormsg, false);
 							if (std::find(sensors.begin(), sensors.end(), sensormsg.deviceid) == sensors.end()) // new sensor
 								sensors.push_back(sensormsg.deviceid);
 							else // old sensor
 							{
+								if (sublists.size() == 0)
+									continue;
 								std::vector<int> subs = sublists.find(sensormsg.deviceid)->second; // subscribers to this sensor
 								#ifdef vv
 								std::cout << "Number of subs to " << sensormsg.deviceid << ": " << subs.size() << std::endl;
@@ -166,21 +164,21 @@ int main(int argc, char *argv[])
 										{
 											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 											double ts = getTimeStamp();
-											logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 										}
 										else // append binary data
 										{
 											unsigned char camdata[sensormsg.datasize];
 											sensormsg.camDataToArray(camdata);
 											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
-											logOutgoingCamData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true);
 										}
 									}
 									else
 									{
 										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 										double ts = getTimeStamp();
-										logOutgoingData(sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts);
+										logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 									}
 									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
 								}
@@ -189,9 +187,13 @@ int main(int argc, char *argv[])
 					}
 				}
 				else if (fds[c] == sfd) // connection from new client
-					fds.push_back(accept(sfd, NULL, NULL));
+				{
+					temp = accept(sfd, NULL, NULL);
+					fds.push_back(temp);
+				}
 				else // data from existing client
 				{
+					memset(buff, 0, SBUFFSIZE); // clear previous messages
 					rsize = recv(fds[c], (char *)buff, SBUFFSIZE, 0);
 					text.updateMessage((char*)buff);
 					#ifdef vv
@@ -201,9 +203,6 @@ int main(int argc, char *argv[])
 					cmd = text.getCommand();
 					if (cmd == "LIST")
 					{
-						#ifdef vv
-						std::cout << "LIST message" << std::endl;
-						#endif
 						text.updateServerID("server334");
 						text.updateDeviceIDs(sensors);
 						str = text.createListReply();
@@ -212,23 +211,21 @@ int main(int argc, char *argv[])
 					}
 					else if (cmd == "SUBSCRIBE")
 					{
-						#ifdef vv
-						std::cout << "SUBSCRIBE message" << std::endl;
-						#endif
 						std::vector<std::string> devsToSub = text.getDeviceIDs(); // devices to subscribe
-						std::vector<std::string>::const_iterator it;
+						std::vector<std::string>::iterator it;
 						for (it = devsToSub.begin(); it != devsToSub.end(); it++)
 						{
 							if (std::find(sensors.begin(), sensors.end(), *it) == sensors.end())
 							{
-								std::cerr << "Invalid device ID in SUBSCRIBE message" << std::endl;
+								std::cerr << "invalid device ID in SUBSCRIBE message" << std::endl;
+								devsToSub.erase(it);
 								continue;
 							}
 							std::map< std::string, std::vector<int> >::iterator itr;
 							if ((itr = sublists.find(*it)) == sublists.end()) // no subscribers to this sensor
 							{
 								#ifdef vv
-								std::cout << "No previous subscribers" << std::endl;
+								std::cout << "no previous subscribers" << std::endl;
 								#endif
 								std::vector<int> clients; // create new list of clients subscribed to this sensor
 								clients.push_back(fds[c]);
@@ -237,7 +234,7 @@ int main(int argc, char *argv[])
 							else // sensor has subscribers
 							{
 								#ifdef vv
-								std::cout << "Sensor has subscribers" << std::endl;
+								std::cout << "sensor has subscribers" << std::endl;
 								#endif
 								if (std::find(itr->second.begin(), itr->second.end(), fds[c]) == itr->second.end())
 								{
@@ -245,21 +242,75 @@ int main(int argc, char *argv[])
 								}
 								else // client has already subscribed to this sensor
 								{
-									std::cerr << "Client has already subscribed to this sensor" << std::endl;
+									std::cerr << "client has already subscribed to this sensor" << std::endl;
 									continue;
 								}
 							}
 						}
+						text.updateDeviceIDs(devsToSub);
+						text.updateCount(devsToSub.size());
 						text.updateServerID("server334");
 						str = text.createSubscribeReply();
+						#ifdef vv
+						std::cout << str << std::endl;
+						#endif
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
 					}
-					else if(cmd == "UNSUBSCRIBE")
+					else if (cmd == "UNSUBSCRIBE")
 					{
-						// TODO
+						#ifdef vv
+						std::cout << "unsub request from " << text.getDeviceIDs().size() << " device(s)" << std::endl;
+						#endif
+						std::vector<std::string> devsToUnsub = text.getDeviceIDs(); // devices to unsubscribe from
+						std::vector<std::string>::iterator it;
+						for (it = devsToUnsub.begin(); it != devsToUnsub.end(); it++)
+						{
+							if (std::find(sensors.begin(), sensors.end(), *it) == sensors.end())
+							{
+								std::cerr << "invalid device ID in UNSUBSCRIBE message" << std::endl;
+								devsToUnsub.erase(it);
+								continue;
+							}
+							std::map< std::string, std::vector<int> >::iterator itr;
+							if ((itr = sublists.find(*it)) == sublists.end()) // sensor has no subscribers
+							{
+								std::cerr << "sensor has no subscribers" << std::endl;
+								devsToUnsub.erase(it);
+								continue;
+							}
+							else // sensor has subscribers
+							{
+								std::vector<int>::iterator itrt = std::find(itr->second.begin(), itr->second.end(), fds[c]);
+								if (itrt == itr->second.end()) // client has not subscribed to this sensor
+								{
+									std::cerr << "client has not subscribed to this sensor" << std::endl;
+									devsToUnsub.erase(it);
+									continue;
+								}
+								else // valid unsubscribe request
+								{
+									#ifdef vv
+									std::cout << "valid unsubscribe request" << std::endl;
+									#endif
+									itr->second.erase(itrt);
+									if (itr->second.size() == 0) // client is the only subscriber to this sensor
+									{
+										#ifdef vv
+										std::cout << "client is the only subscriber to this sensor" << std::endl;
+										#endif
+										sublists.erase(itr);
+									}
+								}
+							}
+						}
+						text.updateDeviceIDs(devsToUnsub);
+						text.updateCount(devsToUnsub.size());
 						text.updateServerID("server334");
 						str = text.createUnsubscribeReply();
+						#ifdef vv
+						std::cout << str << std::endl;
+						#endif
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
 					}

@@ -1,5 +1,9 @@
 /* IoTPS Client */
+
+#include <fstream>
+
 #include"client.hh"
+#include"helpers.hh"
 
 int connect(){
 	int ufd;
@@ -19,7 +23,7 @@ int connect(){
 }
 
 int main(int argc,char *argv[]){
-	char ip[IPLEN],port[PORTLEN];
+	char ip[IPLEN],port[PORTLEN],id[IDLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
 	char * p;
@@ -44,7 +48,7 @@ int main(int argc,char *argv[]){
 	req = NONE;
 
 	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:")) != -1){
+	while( (opt = getopt(argc,argv, "s:p:i:")) != -1){
 		switch(opt){
 			case 's':
 				strncpy(ip,optarg,IPLEN);
@@ -52,12 +56,21 @@ int main(int argc,char *argv[]){
 			case 'p':
 				strncpy(port,optarg,PORTLEN);
 				break;
+			case 'i':
+				strncpy(id,optarg,IDLEN);
+				break;
 			case '?':
 				return -1;
 			default:
 				return -1;		
 		}
 	}
+
+	// create directory for log files
+	std::string clientid(id);
+	std::string dirname = "client_" + clientid + "_logs";
+	if (createDir(dirname) == -1)
+		return -1;
 
 	if( (pid = fork()) < 0){
 		perror("fork");
@@ -104,7 +117,7 @@ int main(int argc,char *argv[]){
 				return 0;		
 			}
 			else if(ch == 'R' || ch == 'r'){ //refresh,get sensors list	
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				std::string msg = text.createListRequest();			
 				memcpy(buff,msg.c_str(),msg.size());
 				send(ufd,buff,msg.size(),0);
@@ -112,7 +125,7 @@ int main(int argc,char *argv[]){
 				req = LIST;
 			}
 			else if(ch == 'S' || ch == 's'){
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				slist = scr.getSList();
 				text.updateDeviceIDs(slist);
 				text.updateCount(slist.size());
@@ -123,7 +136,7 @@ int main(int argc,char *argv[]){
 				req = SUBS;
 			}	
 			else if(ch == 'U' || ch == 'u'){
-				text.updateClientID("abc123");
+				text.updateClientID(clientid);
 				ulist = scr.getUList();
 				text.updateDeviceIDs(ulist);
 				text.updateCount(ulist.size());
@@ -139,6 +152,7 @@ int main(int argc,char *argv[]){
 			//read
 			rsize = recv(ufd,buff,BUFF_SIZE,0);
 			p = strstr(buff,"\r\n\r\n");
+			memset(tbuff, 0, BUFF_SIZE); // clear previous messages
 			memcpy(tbuff,buff,p-buff+1);
 			text.updateMessage(tbuff);
 			text.parse();
@@ -150,28 +164,40 @@ int main(int argc,char *argv[]){
 				req = NONE;
 			}
 			else if(cmd == "OK" && req == SUBS){
-				//TODO
+				list = text.getDeviceIDs();
+				scr.addSList(list);
 				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 				req = NONE;			
 			}
 			else if(cmd == "OK" && req == UNSUBS){
-				//TODO
+				list = text.getDeviceIDs();
+				std::vector<std::string> prevList = scr.getPList();
+				std::vector<std::string>::const_iterator it;
+				for (it = list.begin(); it != list.end(); it++)
+				{
+					std::vector<std::string>::iterator itr = std::find(prevList.begin(), prevList.end(), *it);
+					if (itr != prevList.end())
+						prevList.erase(itr);
+					else
+						std::cerr << "client was not previously subscribed to this sensor" << std::endl;
+				}
+				scr.addSList(prevList);
 				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
-				req = NONE;			
-			} 
+				req = NONE;
+			}
 			else if(cmd == "UPDATES"){
-				//TODO
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
+				std::string binarytest(tbuff, 9);
 				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
-					if (itr->find("camera") == std::string::npos)
-						logIncomingData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+					if (itr->find("camera") != std::string::npos && binarytest != "NO_MOTION")
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true);
 					else
-						logIncomingCamData("client_" + text.getClientID(), *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp());
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false);
 				scr.status("Updates.");
 				req = NONE;
 			}
-		}			
+		}
 	}
 	return 0;
 }
