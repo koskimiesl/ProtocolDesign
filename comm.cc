@@ -100,6 +100,9 @@ std::vector<std::string> CommMessage::getDeviceIDs(){
 	return deviceIDs;
 }
 
+std::string CommMessage::getMessage(){
+	return message;
+}
 
 //Updates
 void CommMessage::updateVersion(std::string ver){

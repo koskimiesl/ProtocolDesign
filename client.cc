@@ -1,4 +1,7 @@
 /* IoTPS Client */
+
+#include <fstream>
+
 #include"client.hh"
 #include"helpers.hh"
 
@@ -149,6 +152,7 @@ int main(int argc,char *argv[]){
 			//read
 			rsize = recv(ufd,buff,BUFF_SIZE,0);
 			p = strstr(buff,"\r\n\r\n");
+			memset(tbuff, 0, BUFF_SIZE); // clear previous messages
 			memcpy(tbuff,buff,p-buff+1);
 			text.updateMessage(tbuff);
 			text.parse();
@@ -160,17 +164,28 @@ int main(int argc,char *argv[]){
 				req = NONE;
 			}
 			else if(cmd == "OK" && req == SUBS){
-				//TODO
+				list = text.getDeviceIDs();
+				scr.addSList(list);
 				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 				req = NONE;			
 			}
 			else if(cmd == "OK" && req == UNSUBS){
-				//TODO
+				list = text.getDeviceIDs();
+				std::vector<std::string> prevList = scr.getPList();
+				std::vector<std::string>::const_iterator it;
+				for (it = list.begin(); it != list.end(); it++)
+				{
+					std::vector<std::string>::iterator itr = std::find(prevList.begin(), prevList.end(), *it);
+					if (itr != prevList.end())
+						prevList.erase(itr);
+					else
+						std::cerr << "client was not previously subscribed to this sensor" << std::endl;
+				}
+				scr.addSList(prevList);
 				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
-				req = NONE;			
-			} 
+				req = NONE;
+			}
 			else if(cmd == "UPDATES"){
-				//TODO
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
 				std::string binarytest(tbuff, 9);

@@ -94,14 +94,17 @@ void Screen::addAList(std::vector<std::string> al){
 	std::vector<std::string>::iterator itr;
 	for(itr = al.begin();itr != al.end();itr++)
 		sensors[0].insert(std::pair<std::string,bool>(*itr,false));
+	tab = 0;
 	showOption();
 }
 
 // add list of subscribed sensors
 void Screen::addSList(std::vector<std::string> sl){
+	sensors[1].clear();
 	std::vector<std::string>::iterator itr;
 	for(itr = sl.begin();itr != sl.end();itr++)
 		sensors[1].insert(std::pair<std::string,bool>(*itr,false));
+	tab = 1;
 	showOption();
 }
 
@@ -121,6 +124,15 @@ std::vector<std::string> Screen::getUList(){
 	for(itr = sensors[1].begin();itr != sensors[1].end();itr++){
 		if(itr->second)
 			ul.push_back(itr->first);
+	}
+	return ul;
+}
+
+std::vector<std::string> Screen::getPList(){
+	std::vector<std::string> ul;
+	std::map<std::string,bool>::iterator itr;
+	for(itr = sensors[1].begin();itr != sensors[1].end();itr++){
+		ul.push_back(itr->first);
 	}
 	return ul;
 }

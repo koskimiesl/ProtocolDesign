@@ -18,6 +18,7 @@ class Screen{
 		void addSList(std::vector<std::string> sl);	// subscribed sensors
 		std::vector<std::string> getSList();
 		std::vector<std::string> getUList();
+		std::vector<std::string> getPList();
 	   	WINDOW * getIPWin();
 	    void moveWinUp();
 	    void moveWinDown();

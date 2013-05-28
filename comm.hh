@@ -28,6 +28,7 @@ public:
 	size_t getCount();
 	size_t getSize();
 	std::vector<std::string> getDeviceIDs();
+	std::string getMessage();
 	// Requests
 	std::string createListRequest();
 	std::string createSubsRequest();
