@@ -80,7 +80,8 @@ int main(int argc, char *argv[])
 	socklen_t len;
 	len = sizeof(struct sockaddr);
 	std::vector<std::string> sensors; // list of active sensors (device IDs)
-	std::map< std::string,std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
+	std::map< std::string, std::vector<int> > sublists; // device IDs mapped to fd lists (subscribers)
+	std::map< int, std::string> clientids; // file descriptors mapped to client IDs
 	CommMessage text;
 	unsigned char obuff[SBUFFSIZE]; // send buffer
 	std::string str;
@@ -158,27 +159,28 @@ int main(int argc, char *argv[])
 									str = text.createUpdatesMessage();
 									memset(obuff, 0, SBUFFSIZE); // clear previous messages
 									memcpy((char*)obuff, str.c_str(), str.size());
+									std::string clientid = clientids[*it];
 									if (sensormsg.sensortype == CAMERA)
 									{
 										if (sensormsg.sensordata == "NO_MOTION")
 										{
 											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 											double ts = getTimeStamp();
-											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
+											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 										}
 										else // append binary data
 										{
 											unsigned char camdata[sensormsg.datasize];
 											sensormsg.camDataToArray(camdata);
 											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
-											logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true);
+											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true);
 										}
 									}
 									else
 									{
 										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 										double ts = getTimeStamp();
-										logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
+										logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 									}
 									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
 									std::cout<<"Size: "<<
@@ -213,6 +215,7 @@ int main(int argc, char *argv[])
 					}
 					else if (cmd == "SUBSCRIBE")
 					{
+						clientids.insert(std::pair< int, std::string>(fds[c], text.getClientID()));
 						std::vector<std::string> devsToSub = text.getDeviceIDs(); // devices to subscribe
 						std::vector<std::string>::iterator it;
 						for (it = devsToSub.begin(); it != devsToSub.end(); it++)

@@ -1,6 +1,7 @@
 /* IoTPS Client */
 
 #include <fstream>
+#include <unistd.h>
 
 #include"client.hh"
 #include"helpers.hh"
@@ -95,6 +96,15 @@ int main(int argc,char *argv[]){
 		FD_SET(0,&rfds);
 		if( (ret = pselect(ufd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
 			continue;
+		}
+		else if (ret == 0)
+		{
+			if (close(ufd) == -1)
+			{
+				perror("close");
+				return -1;
+			}
+			return 0;
 		}
 		else if(FD_ISSET(0,&rfds)){
 			scr.status("kk");

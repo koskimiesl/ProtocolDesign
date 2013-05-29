@@ -34,9 +34,9 @@ void logServerIncoming(const std::string dirname, const SensorMessage& msg, bool
 	}
 }
 
-void logServerOutgoing(const std::string dirname, const std::string deviceid, const char* obuff, size_t datasize, double sendts, bool binarydata)
+void logServerOutgoing(const std::string dirname, const std::string clientid, const std::string deviceid, const char* obuff, size_t datasize, double sendts, bool binarydata)
 {
-	std::string logfn = dirname + "/outgoing_" + deviceid + ".log";
+	std::string logfn = dirname + "/outgoing_client_" + clientid + "_" + deviceid + ".log";
 	std::ofstream fs(logfn.c_str(), std::ios::out | std::ios::app);
 	if (!binarydata)
 	{
@@ -50,7 +50,7 @@ void logServerOutgoing(const std::string dirname, const std::string deviceid, co
 		fs << std::setprecision(dbl::digits10) << sendts << "\t" << datasize << std::endl;
 		fs.close();
 
-		std::string datafn = dirname + "/outgoing_" + deviceid + ".data";
+		std::string datafn = dirname + "/outgoing_client_" + clientid + "_" + deviceid + ".data";
 		std::ofstream binfs(datafn.c_str(), std::ios::out | std::ios::binary | std::ios::app);
 		binfs.write(obuff, datasize);
 		binfs.close();
