@@ -131,7 +131,7 @@ int main(int argc,char *argv[]){
 	struct timeval ct,pt;
 	struct list_head *pos,*q;
 	struct Queue * queue;
-
+	enum Event event;
 	if( (ufd = create_listen()) == -1){
 		raise(SIGUSR1);		
 	}	
@@ -248,6 +248,7 @@ int main(int argc,char *argv[]){
 	idx = 0;
 	gettimeofday(&pt,NULL);
 	gettimeofday(&(state.kt),NULL);
+	event = RECEIVED;
 	while(1){
 		if( (nfds = epoll_wait(epollfd,events,2,ACKTO)) == -1){
 			perror("epoll_wait, ");
@@ -264,6 +265,9 @@ int main(int argc,char *argv[]){
 					continue;				
 				}
 				else if(rsize >= 8){
+					event = getNextState(event,0.1,0.1);
+					if(!event)
+						continue;
 					gettimeofday(&(state.kt),NULL);
 					memcpy(icp.buffer,ibuff,8);
 					toValues(&icp);
