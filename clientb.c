@@ -244,6 +244,7 @@ int main(int argc,char *argv[]){
 		perror("epoll_ctl, ");
 		raise(SIGUSR1);	
 	}
+
 	idx = 0;
 	gettimeofday(&pt,NULL);
 	gettimeofday(&(state.kt),NULL);
@@ -253,8 +254,8 @@ int main(int argc,char *argv[]){
 			raise(SIGUSR1);		
 		}
 		else if(nfds == 0){
-			gettimeofday(&pt,NULL);			
-			timeout(&state,sfd);	
+			timeout(&state,sfd);
+			gettimeofday(&pt,NULL);				
 		}
 		for(n = 0; n < nfds; n++){
 			if(events[n].data.fd == sfd){
@@ -388,26 +389,26 @@ int main(int argc,char *argv[]){
 			}
 		}
 		gettimeofday(&ct,NULL);
-		if( (state.kt.tv_sec - ct.tv_sec) > 20){
+		if( (ct.tv_sec - state.kt.tv_sec) > 150){
 			/* Remove nfd */
-					ev.events = EPOLLIN;
-					ev.data.fd = nfd;
-					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,nfd,&ev) == -1){
-						perror("epoll_ctl, ");
-						raise(SIGUSR1);	
-					}
-					/* Remove sfd */
-					ev.events = EPOLLIN;
-					ev.data.fd = sfd;
-					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,sfd,&ev) == -1){
-						perror("epoll_ctl, ");
-						raise(SIGUSR1);	
-					}					
-					close(nfd);
-					close(ufd);
-					close(sfd);
-					releaseState(&state);
-					return 0;
+			ev.events = EPOLLIN;
+			ev.data.fd = nfd;
+			if(epoll_ctl(epollfd,EPOLL_CTL_DEL,nfd,&ev) == -1){
+				perror("epoll_ctl, ");
+				raise(SIGUSR1);	
+			}
+			/* Remove sfd */
+			ev.events = EPOLLIN;
+			ev.data.fd = sfd;
+			if(epoll_ctl(epollfd,EPOLL_CTL_DEL,sfd,&ev) == -1){
+				perror("epoll_ctl, ");
+				raise(SIGUSR1);	
+			}					
+			close(nfd);
+			close(ufd);
+			close(sfd);
+			releaseState(&state);
+			return 0;
 		}
 
 		if(checktime(&pt,&ct,ACKTOU)){
