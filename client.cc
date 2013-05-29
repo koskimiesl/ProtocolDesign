@@ -97,15 +97,6 @@ int main(int argc,char *argv[]){
 		if( (ret = pselect(ufd+1,&rfds,NULL,NULL,&t,NULL)) == -1){
 			continue;
 		}
-		else if (ret == 0)
-		{
-			if (close(ufd) == -1)
-			{
-				perror("close");
-				return -1;
-			}
-			return 0;
-		}
 		else if(FD_ISSET(0,&rfds)){
 			ch = wgetch(scr.getIPWin());
 			if(ch == KEY_DOWN){
@@ -162,6 +153,15 @@ int main(int argc,char *argv[]){
 		else if(FD_ISSET(ufd,&rfds)){
 			//read
 			rsize = recv(ufd,buff,BUFF_SIZE,0);
+			if (rsize == 0)
+			{
+				if (close(ufd) == -1)
+				{
+					perror("close");
+					return -1;
+				}
+				return 0;
+			}		
 			p = strstr(buff,"\r\n\r\n");
 			memset(tbuff, 0, BUFF_SIZE); // clear previous messages
 			memcpy(tbuff,buff,p-buff+1);
