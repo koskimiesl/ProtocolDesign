@@ -15,7 +15,7 @@
 #define PORTLEN 10
 //#define vv
 
-enum State{
+enum Event{
 	LOST,
 	RECEIVED
 };

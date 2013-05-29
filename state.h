@@ -50,7 +50,7 @@ struct State {
 	// remote acked index 
 	unsigned short rack; // cumulative
 	struct timeval kt; // keepalive time
-	unsigned int window; 
+	unsigned long int window; 
 	struct Int racks; // individual
 	// sent to app layer
 	unsigned short sentup;

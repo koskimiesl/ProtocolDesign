@@ -10,7 +10,7 @@ void initState(struct State * state){
 	state->sentup = 0;
 	state->sentdown = 0;
 	state->status = RC;
-	state->window = 64000;
+	state->window = 10000;
 	state->clean = false;
 	INIT_LIST_HEAD(&(state->out.list));
 	INIT_LIST_HEAD(&(state->in.list));
