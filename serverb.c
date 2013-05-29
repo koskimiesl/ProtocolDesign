@@ -92,6 +92,7 @@ void timeout(struct State * s,int sfd){
 	struct ICP icp;	
 	char obuff[1008];	
 	memset(&state,0,sizeof(struct ICP));
+	
 	list_for_each(pos,&(s->list)){
 		state = list_entry(pos,struct State,list);
 		/* Try to send remaining packets limited due to congestion window */
@@ -99,9 +100,19 @@ void timeout(struct State * s,int sfd){
 		if(state->ackreq)
 			sendAck(state,sfd);
 		gettimeofday(&ct,NULL);
+
+		if( (ct.tv_sec - state->kt.tv_sec) > 50 ){
+			/* Send Keepalive packet */
+			updateICP(&icp,0x00,0x00,0x00,0x00,0x01,0x00,0x0000,state->seq,0x0000);
+			toBinary(&icp);
+			memcpy(obuff,icp.buffer,8);
+			sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
+		}
+
 		list_for_each(idx,&((state->out).list)){
 			queue = list_entry(idx,struct Queue,list);
 			if( queue->sent && checktime(&(queue->st),&ct,RETRTOU) ){
+				state->window = (state->window < 2000)?1000:(state->window)-(2*queue->size); 
 				/* Update ICP */
 				updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,queue->size,queue->seq,state->rack);
 				toBinary(&icp);
@@ -117,7 +128,7 @@ void timeout(struct State * s,int sfd){
 }
 
 int main(int argc,char *argv[]){
-	int temp; 
+	int temp,ret; 
 	int epollfd,sfd;
 	int nfds,n,rsize;
 	socklen_t len;
@@ -169,7 +180,7 @@ int main(int argc,char *argv[]){
 		}
 		else if(nfds == 0){
 			timeout(&state_list,sfd);
-			continue;
+			gettimeofday(&pt,NULL);
 		}
 		for(n = 0; n < nfds; n++){
 			if(events[n].data.fd == sfd){
@@ -193,6 +204,7 @@ int main(int argc,char *argv[]){
 							state->len = len;
 							state->rack = icp.seq;
 							state->sentup = icp.seq;
+							gettimeofday(&(state->kt),NULL);
 							/* Send packet with start bit set */
 							updateICP(&icp,0x01,0x00,0x01,0x01,0x00,0x00,
 											0x0000,state->seq,state->rack);
@@ -230,6 +242,8 @@ int main(int argc,char *argv[]){
 							ackThis(state,icp.ack,icp.ackbit,icp.cackbit);				
 						}
 						else if(icp.kalive == 0x01 && icp.size == 0){
+							// good
+							printf("Got KAlive\n");						
 						}
 						else if(icp.size != 0){
 							if(state->rack > 32768){
@@ -247,8 +261,9 @@ int main(int argc,char *argv[]){
 								}
 							}							
 							/* Ack */
-							ackThis(state,icp.ack,icp.cackbit,icp.cackbit);	
-							if(!ackThat(state,icp.seq)){
+							ackThis(state,icp.ack,icp.cackbit,icp.cackbit);
+							ret = ackThat(state,icp.seq);	
+							if(ret == 0 || ret == -1){
 								/* Immediate ack */
 								updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,
 													0x0000,state->seq,icp.seq);
@@ -258,6 +273,8 @@ int main(int argc,char *argv[]){
 								sendto(sfd,(char*)obuff,8,0,&(state->addr),
 											state->len);							
 							}	
+							if(ret == -1)
+								continue;
 							memmove(obuff,ibuff+8,icp.size);
 							addInPacketToState(state,obuff,icp.seq,icp.size,icp.frag);
 							/* Send up */
@@ -303,11 +320,30 @@ int main(int argc,char *argv[]){
 						sendPacket(state,sfd);
 					}				
 					else if(rsize == 0){
+						state->clean = true;
 					}
 				}				
 			}	
 		}
 		gettimeofday(&ct,NULL);
+		list_for_each_safe(pos,q,&(state_list.list)){
+			state=list_entry(pos,struct State,list);
+			if( (ct.tv_sec - state->kt.tv_sec) > 150 || state->clean ){
+				printf("Deleted\n");
+				list_del(pos);
+				releaseState(state);	
+				/* Remove fd from epoll */
+				ev.events = EPOLLIN;
+				ev.data.fd = state->fd;
+				if(epoll_ctl(epollfd,EPOLL_CTL_DEL,state->fd,&ev) == -1){
+					perror("epoll_ctl, ");
+					raise(SIGUSR1);
+				}			
+				close(state->fd);
+				free(state);		
+			}
+		}
+		
 		if(checktime(&pt,&ct,ACKTOU)){
 			timeout(&state_list,sfd);
 			gettimeofday(&pt,NULL);

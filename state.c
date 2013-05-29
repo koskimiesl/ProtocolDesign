@@ -10,7 +10,8 @@ void initState(struct State * state){
 	state->sentup = 0;
 	state->sentdown = 0;
 	state->status = RC;
-	state->window = 10000;
+	state->window = 64000;
+	state->clean = false;
 	INIT_LIST_HEAD(&(state->out.list));
 	INIT_LIST_HEAD(&(state->in.list));
 	INIT_LIST_HEAD(&(state->racks.list));
@@ -62,6 +63,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 			list_for_each_safe(pos,q,&(state->out.list)){
 				tmp = list_entry(pos,struct Queue,list);
 				if(tmp->seq == state->ack){
+					state->window += tmp->size * 2;					
 					list_del(pos);
 					free(tmp);
 					break;
@@ -75,6 +77,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 		list_for_each_safe(pos,q,&(state->out.list)){
 			tmp = list_entry(pos,struct Queue,list);
 			if(tmp->seq == a){
+				state->window += tmp->size/2;
 				list_del(pos);
 				free(tmp);
 				break;	
@@ -83,7 +86,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 	}
 }	
 
-bool ackThat(struct State * state,unsigned short a){
+int ackThat(struct State * state,unsigned short a){
 	struct Int * tmp;
 	struct list_head *pos,*q;
 	unsigned short t;
@@ -106,13 +109,21 @@ bool ackThat(struct State * state,unsigned short a){
 				break;
 		}		
 		state->ackreq = true;
-		return true;	
+		return 1;	
 	}
+
 	else {
+
+		list_for_each(pos,&((state->racks).list)){
+			tmp = list_entry(pos,struct Int,list);
+			if(tmp->seq == a)
+				return -1;
+		}
+
 		tmp = (struct Int *)malloc(sizeof(struct Int));
 		tmp->seq = a;
 		list_add_tail(&(tmp->list),&((state->racks).list));
-		return false;
+		return 0;
 	}
 }
 
@@ -157,19 +168,28 @@ void releaseState(struct State * state){
 	struct list_head *pos,*idx;
 	struct Queue * queue;
 	struct Int * i;
+	size_t x =0;
+	printf("IN\n");
 	list_for_each_safe(pos,idx,&(state->in.list)){
 		queue = list_entry(pos,struct Queue,list);
 		list_del(pos);
-		free(queue);	
+		free(queue);
+		printf("%u\t",x++);	
 	}
+	printf("Out\n");
+	x = 0;
 	list_for_each_safe(pos,idx,&(state->out.list)){
 		queue = list_entry(pos,struct Queue,list);
 		list_del(pos);
 		free(queue);	
+		printf("%u\t",x++);
 	}
+	printf("RACKS\n");
+	x = 0;
 	list_for_each_safe(pos,idx,&(state->racks.list)){
 		i = list_entry(pos,struct Int,list);
 		list_del(pos);
-		free(i);	
+		free(i);
+		printf("%u\t",x++);	
 	}
 }

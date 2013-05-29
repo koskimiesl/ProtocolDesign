@@ -55,6 +55,7 @@ struct State {
 	// sent to app layer
 	unsigned short sentup;
 	bool ackreq;
+	bool clean;
 	int fd;
 	enum Status status;
 	struct Queue out;
@@ -65,7 +66,7 @@ void initState(struct State * state);
 struct State * findState_addr(struct State * state,struct sockaddr * addr);
 struct State * findState_fd(struct State * state,int fd);
 void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned char cackbit);
-bool ackThat(struct State * state,unsigned short a);
+int ackThat(struct State * state,unsigned short a);
 void addOutPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
 int size,unsigned char frag);
 void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,

@@ -117,7 +117,7 @@ create_listen(){
 int main(int argc,char *argv[]){
 	socklen_t len;
 	size_t k,t,tsize,idx;
-	int rsize;	
+	int rsize,ret;	
 	int ufd,sfd,nfd;
 	int epollfd,nfds,n;	
 	bool confirm,cnt;
@@ -314,13 +314,16 @@ int main(int argc,char *argv[]){
 						}
 						/* Ack */
 						ackThis(&state,icp.ack,icp.ackbit,icp.cackbit);
-						if(!ackThat(&state,icp.seq)){
+						ret = ackThat(&state,icp.seq);
+						if(ret == 0 || ret == -1){
 							/* Immediate ack */
 							updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,0x0000,state.seq,icp.seq);
 							toBinary(&icp);
 							memcpy(obuff,icp.buffer,8);
 							sendto(sfd,(char*)obuff,8,0,&(state.addr),state.len);
 						}			
+						if(ret == -1)
+							continue;
 						/* Store */			
 						memmove(obuff,ibuff+8,icp.size);
 						addInPacketToState(&state,obuff,icp.seq,icp.size,icp.frag);						
