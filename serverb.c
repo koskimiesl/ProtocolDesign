@@ -62,7 +62,7 @@ void sendPacket(struct State * state,int sfd){
 				memcpy(obuff,icp.buffer,8);
 				memcpy(obuff+8,queue->buffer,queue->size);
 				sendto(sfd,(char *)obuff,queue->size+8,0,&(state->addr),state->len);
-				(state->window) -= (queue->size);
+				state->window = (state->window < 2000)?1000:(state->window)-(queue->size); 
 				(state->sentdown) = x;
 				cnt = true;
 				continue;
@@ -221,7 +221,7 @@ int main(int argc,char *argv[]){
 						} 
 					}
 					else {
-						printf("W: %d \n",state->window);
+						printf("W: %ld \n",state->window);
 						gettimeofday(&(state->kt),NULL);
 						if(icp.endbit == 0x01 && icp.size == 00){
 						}

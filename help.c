@@ -85,6 +85,7 @@ int getNextState(int previous, double p, double q)
 	if (p < 0 || p > 1 || q < 0 || q > 1) // invalid loss ratio
 		return -1;
 
+	srand(time(NULL));
 	if (previous == RECEIVED)
 	{
 		if (rand() <  p * ((double)RAND_MAX + 1.0))
