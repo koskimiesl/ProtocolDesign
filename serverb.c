@@ -1,6 +1,11 @@
 /* Server Binary Protocol */
 #include"serverb.h"
 
+#define INITTO 400
+#define ACKTO 200
+#define ACKTOU 200000
+#define RETRTOU 600000
+
 /* Handle signal */
 void signalhandler(int signo){
 	switch(signo){
@@ -46,6 +51,7 @@ void sendPacket(struct State * state,int sfd){
 			queue = list_entry(pos,struct Queue,list);
 			if(queue->seq == x){
 				gettimeofday(&(queue->st),NULL);
+				printf("Y %d %d\n",(int)(queue->st).tv_sec,(int)(queue->st).tv_usec);
 				queue->sent = true;
 				/* Update ICP */
 				updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,
@@ -67,6 +73,17 @@ void sendPacket(struct State * state,int sfd){
 	}
 }
 
+void sendAck(struct State * state,int sfd){
+	struct ICP icp;
+	char obuff[1008];	
+	memset(&icp,0,sizeof(struct ICP));
+	updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state->seq,state->rack);
+	toBinary(&icp);
+	memcpy(obuff,icp.buffer,8);
+	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
+	state->ackreq = false;
+}
+
 void timeout(struct State * s,int sfd){
 	struct State *state;
 	struct Queue *queue;
@@ -79,20 +96,16 @@ void timeout(struct State * s,int sfd){
 		state = list_entry(pos,struct State,list);
 		/* Try to send remaining packets limited due to congestion window */
 		sendPacket(state,sfd); 
-		if(state->ackreq){
-			updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state->seq,state->rack);
-			toBinary(&icp);
-			memcpy(obuff,icp.buffer,8);
-			sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
-			state->ackreq = false;
-		}
+		if(state->ackreq)
+			sendAck(state,sfd);
 		gettimeofday(&ct,NULL);
-		list_for_each(idx,&(state->out.list)){
+		list_for_each(idx,&((state->out).list)){
 			queue = list_entry(idx,struct Queue,list);
-			if( queue->sent && checktime(&(queue->st),&ct,500000) ){
+			if( queue->sent && checktime(&(queue->st),&ct,RETRTOU) ){
 				/* Update ICP */
 				updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,queue->size,queue->seq,state->rack);
 				toBinary(&icp);
+				printf("Resent\n");
 				printICPOut(&icp);
 				memcpy(obuff,icp.buffer,8);
 				memcpy(obuff+8,queue->buffer,queue->size);
@@ -106,10 +119,10 @@ void timeout(struct State * s,int sfd){
 int main(int argc,char *argv[]){
 	int temp; 
 	int epollfd,sfd;
-	int nfds,n;
+	int nfds,n,rsize;
 	socklen_t len;
-	size_t rsize,idx;
-	size_t k;	
+	size_t idx;
+	size_t k,t;	
 	struct ICP icp;
 	struct sockaddr addr;
 	struct epoll_event ev,events[1000];	
@@ -118,7 +131,8 @@ int main(int argc,char *argv[]){
 	struct Queue * queue;
 	struct timeval ct,pt;
 	struct list_head * pos,*q;
-	unsigned short s;	
+	unsigned short s,tsize;
+	unsigned char tfrag;	
 	unsigned char ibuff[BUFF_SIZE];	
 	unsigned char obuff[BUFF_SIZE];
 	unsigned char fbuff[BUFF_SIZE];	
@@ -149,7 +163,7 @@ int main(int argc,char *argv[]){
 	INIT_LIST_HEAD(&state_list.list);
 	gettimeofday(&pt,NULL);
 	while(1){
-		if( (nfds = epoll_wait(epollfd,events,1000,200)) == -1){
+		if( (nfds = epoll_wait(epollfd,events,1000,ACKTO)) == -1){
 			perror("epoll_wait, ");
 			raise(SIGUSR1);		
 		}
@@ -159,12 +173,15 @@ int main(int argc,char *argv[]){
 		}
 		for(n = 0; n < nfds; n++){
 			if(events[n].data.fd == sfd){
+				memset((char*)ibuff,0,BUFF_SIZE);
 				if( (rsize = recvfrom(sfd,(char*)ibuff,BUFF_SIZE,0,&addr,&len)) == -1){
 					continue;
 				}
 				else if(rsize >= 8){
 					memcpy(icp.buffer,ibuff,8);
 					toValues(&icp);
+					if(icp.version != 0x01)
+						continue;
 					printICPIn(&icp);
 					if(	(state = findState_addr(&state_list,&addr)) == NULL){
 						/* It must contain start bit */
@@ -192,6 +209,8 @@ int main(int argc,char *argv[]){
 						} 
 					}
 					else {
+						printf("W: %d \n",state->window);
+						gettimeofday(&(state->kt),NULL);
 						if(icp.endbit == 0x01 && icp.size == 00){
 						}
 						else if(icp.ackbit == 0x01 && icp.size == 0){
@@ -213,6 +232,20 @@ int main(int argc,char *argv[]){
 						else if(icp.kalive == 0x01 && icp.size == 0){
 						}
 						else if(icp.size != 0){
+							if(state->rack > 32768){
+								if(icp.seq < state->rack && icp.seq > (state->rack-32768)){
+									//send ack							
+									sendAck(state,sfd);		
+									continue;
+								}
+							} 
+							else if(state->rack <= 32768){
+								if( icp.seq < state->rack || icp.seq > (32767+state->rack) ){
+									//send ack
+									sendAck(state,sfd);
+									continue;
+								}
+							}							
 							/* Ack */
 							ackThis(state,icp.ack,icp.cackbit,icp.cackbit);	
 							if(!ackThat(state,icp.seq)){
@@ -224,7 +257,7 @@ int main(int argc,char *argv[]){
 								memcpy(obuff,icp.buffer,8);
 								sendto(sfd,(char*)obuff,8,0,&(state->addr),
 											state->len);							
-							}		
+							}	
 							memmove(obuff,ibuff+8,icp.size);
 							addInPacketToState(state,obuff,icp.seq,icp.size,icp.frag);
 							/* Send up */
@@ -257,10 +290,14 @@ int main(int argc,char *argv[]){
 			else {
 				if( (state = findState_fd(&state_list,events[n].data.fd)) != NULL){
 					if( (rsize = recv(events[n].data.fd,(char *)ibuff,BUFF_SIZE,0)) > 0){
-						for(k = 0;k <= (int)(rsize/1000);k++){
-							(state->seq)=((state->seq)==65535)?1:(state->seq)+1;
-							memcpy(obuff,ibuff+k*1000,(k==(int)(rsize/1000))?rsize%1000:1000);
-							addOutPacketToState(state,obuff,icp.seq,icp.size,icp.frag);				
+						t = (rsize-1)/1000;
+						for(k = 0; k <= t; k++){
+							state->seq = (state->seq==65535)?1:state->seq+1;
+							tsize = (rsize > 1000)?1000:rsize;
+							tfrag = (k == t)?0x00:0x01;
+							memcpy(obuff,ibuff+k*1000,tsize);
+							addOutPacketToState(state,obuff,state->seq,tsize,tfrag);
+							rsize-=1000;
 						}
 						/* Send packet,if network is congestion free */ 
 						sendPacket(state,sfd);
@@ -271,7 +308,7 @@ int main(int argc,char *argv[]){
 			}	
 		}
 		gettimeofday(&ct,NULL);
-		if(checktime(&pt,&ct,200000)){
+		if(checktime(&pt,&ct,ACKTOU)){
 			timeout(&state_list,sfd);
 			gettimeofday(&pt,NULL);
 		}

@@ -4,13 +4,13 @@ void initState(struct State * state){
 	srand(time(NULL));	
 	state->seq = rand();
 	state->ack = state->seq;
-	state->ackreq = true;
+	state->ackreq = false;
 	state->rack = 0;
 	state->fd = 0;
 	state->sentup = 0;
 	state->sentdown = 0;
 	state->status = RC;
-	state->window = 50000;
+	state->window = 10000;
 	INIT_LIST_HEAD(&(state->out.list));
 	INIT_LIST_HEAD(&(state->in.list));
 	INIT_LIST_HEAD(&(state->racks.list));
@@ -38,10 +38,26 @@ struct State * findState_fd(struct State * state,int fd){
 	return NULL;
 }
 
+unsigned short getDouble(unsigned short s){
+	if(s < 32768)
+		return (s+32768);
+	else
+		return (s-32768);
+}
+
 void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned char cackbit){
 	struct Queue * tmp;
 	struct list_head * pos,*q;
 	if(ackbit && cackbit){
+		if(state->ack > 32768){
+			if(a < state->ack && a > (state->ack-32768))
+				return;
+		} 
+		else if(state->ack <= 32768){
+			if( a < state->ack || a > (32767+state->ack) )
+				return;
+		}
+		// more protection
 		do {
 			list_for_each_safe(pos,q,&(state->out.list)){
 				tmp = list_entry(pos,struct Queue,list);
@@ -51,7 +67,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 					break;
 				}					
 			}
-			state->ack = (state->ack == 65535)?1:(state->ack)+1;	
+			state->ack = (state->ack == 65535)?1:(state->ack)+1;
 		}
 		while(state->ack <= a);
 	}
@@ -111,6 +127,7 @@ void addOutPacketToState(struct State * state,unsigned char * packet,unsigned sh
  	tmp->size = (unsigned short)size;
 	tmp->sent = false;
 	gettimeofday(&(tmp->st),NULL);
+	printf("Z %d %d\n",(int)(tmp->st).tv_sec,(int)(tmp->st).tv_usec);
 	list_add_tail(&(tmp->list),&((state->out).list));		
 }
 
@@ -126,12 +143,11 @@ void addInPacketToState(struct State * state,unsigned char * packet,unsigned sho
 	list_add_tail(&(tmp->list),&((state->in).list));	
 }
 
-
 bool checktime(struct timeval *pt,struct timeval *ct,size_t gap){
 	if( ((ct->tv_sec) - (pt->tv_sec)) > 0)
 		return true;
-	if( ((ct->tv_sec) - (pt->tv_sec)) == 0)
-		if( ((ct->tv_usec) - (ct->tv_usec)) > gap)
-			return true;			
+	//if( ((ct->tv_sec) - (pt->tv_sec)) == 0)
+	//	if( ((ct->tv_usec) - (ct->tv_usec)) > gap)
+	//		return true;			
 	return false;
 }	 

@@ -60,11 +60,13 @@ inline void updateICP(struct ICP * icp,unsigned char sb,unsigned char eb,unsigne
 }
 
 void printICPIn(struct ICP * icp){
-	printf("--> %d %d %d %d %d %d\n",(int)(icp->ackbit),(int)(icp->cackbit),
+	printf("--> %d %d %d %d %d %d %d %d %d \n",(int)(icp->startbit),(int)(icp->endbit),
+			(int)(icp->ackbit),(int)(icp->cackbit),(int)(icp->kalive),
 			(int)(icp->frag),icp->size,icp->seq,icp->ack); 
 }
 
 void printICPOut(struct ICP * icp){
-	printf("<-- %d %d %d %d %d %d\n",(int)(icp->ackbit),(int)(icp->cackbit),
+	printf("<-- %d %d %d %d %d %d %d %d %d \n",(int)(icp->startbit),(int)(icp->endbit),
+			(int)(icp->ackbit),(int)(icp->cackbit),(int)(icp->kalive),
 			(int)(icp->frag),icp->size,icp->seq,icp->ack); 
 }

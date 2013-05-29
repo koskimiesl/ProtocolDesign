@@ -186,6 +186,8 @@ int main(int argc,char *argv[]){
 				req = NONE;
 			}
 			else if(cmd == "UPDATES"){
+				std::stringstream cc;
+				cc << rsize;	
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
 				std::string binarytest(tbuff, 9);
@@ -194,7 +196,7 @@ int main(int argc,char *argv[]){
 						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true);
 					else
 						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false);
-				scr.status("Updates.");
+				scr.status(cc.str().c_str());
 				req = NONE;
 			}
 		}

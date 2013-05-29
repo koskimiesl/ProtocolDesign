@@ -181,6 +181,8 @@ int main(int argc, char *argv[])
 										logServerOutgoing(SLOGDIR, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 									}
 									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
+									std::cout<<"Size: "<<
+								sensormsg.datasize+str.size()<<std::endl;								
 								}
 							}
 						}
