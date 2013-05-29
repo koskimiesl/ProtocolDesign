@@ -151,3 +151,25 @@ bool checktime(struct timeval *pt,struct timeval *ct,size_t gap){
 	//		return true;			
 	return false;
 }	 
+
+
+void releaseState(struct State * state){
+	struct list_head *pos,*idx;
+	struct Queue * queue;
+	struct Int * i;
+	list_for_each_safe(pos,idx,&(state->in.list)){
+		queue = list_entry(pos,struct Queue,list);
+		list_del(pos);
+		free(queue);	
+	}
+	list_for_each_safe(pos,idx,&(state->out.list)){
+		queue = list_entry(pos,struct Queue,list);
+		list_del(pos);
+		free(queue);	
+	}
+	list_for_each_safe(pos,idx,&(state->racks.list)){
+		i = list_entry(pos,struct Int,list);
+		list_del(pos);
+		free(i);	
+	}
+}

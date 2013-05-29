@@ -197,7 +197,7 @@ int main(int argc,char *argv[]){
 				ev.events = EPOLLIN;
 				ev.data.fd = sfd;
 				if(epoll_ctl(epollfd,EPOLL_CTL_ADD,sfd,&ev) == -1){
-					perror("epoll_create, ");
+					perror("epoll_ctl, ");
 					raise(SIGUSR1);
 				}	
 			}
@@ -241,19 +241,20 @@ int main(int argc,char *argv[]){
 	ev.events = EPOLLIN;
 	ev.data.fd = nfd;
 	if(epoll_ctl(epollfd,EPOLL_CTL_ADD,nfd,&ev) == -1){
-		perror("epoll_create, ");
+		perror("epoll_ctl, ");
 		raise(SIGUSR1);	
 	}
 	idx = 0;
 	gettimeofday(&pt,NULL);
+	gettimeofday(&(state.kt),NULL);
 	while(1){
 		if( (nfds = epoll_wait(epollfd,events,2,ACKTO)) == -1){
 			perror("epoll_wait, ");
 			raise(SIGUSR1);		
 		}
 		else if(nfds == 0){
-			timeout(&state,sfd);
-			continue;		
+			gettimeofday(&pt,NULL);			
+			timeout(&state,sfd);	
 		}
 		for(n = 0; n < nfds; n++){
 			if(events[n].data.fd == sfd){
@@ -268,6 +269,21 @@ int main(int argc,char *argv[]){
 					if( icp.version != 0x01)
 						continue;
 					if(icp.endbit == 0x01 && state.status == CT){
+						/* Remove nfd */
+						ev.events = EPOLLIN;
+						ev.data.fd = nfd;
+						if(epoll_ctl(epollfd,EPOLL_CTL_DEL,nfd,&ev) == -1){
+							perror("epoll_ctl, ");
+							raise(SIGUSR1);	
+						}					
+						close(nfd);
+						close(ufd);	
+						/* Send ack */
+						updateICP(&icp,0x00,0x01,0x00,0x00,0x00,0x00,0x0000,state.seq,icp.seq);
+						toBinary(&icp);
+						memcpy(obuff,icp.buffer,8);
+						sendto(sfd,(char*)obuff,8,0,&(state.addr),state.len);
+						break;
 					}
 					else if(icp.ackbit == 0x01 && icp.size == 0){
 						/* Ack */ 
@@ -349,15 +365,56 @@ int main(int argc,char *argv[]){
 					sendPacket(&state,sfd);				
 				}			
 				else if(rsize == 0){
-					/* sent endbit */
+					/* Remove nfd */
+					ev.events = EPOLLIN;
+					ev.data.fd = nfd;
+					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,nfd,&ev) == -1){
+						perror("epoll_ctl, ");
+						raise(SIGUSR1);	
+					}
+					/* Remove sfd */
+					ev.events = EPOLLIN;
+					ev.data.fd = sfd;
+					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,sfd,&ev) == -1){
+						perror("epoll_ctl, ");
+						raise(SIGUSR1);	
+					}					
+					close(nfd);
+					close(ufd);
+					close(sfd);
+					releaseState(&state);
+					return 0;
 				}
 			}
 		}
 		gettimeofday(&ct,NULL);
+		if( (state.kt.tv_sec - ct.tv_sec) > 20){
+			/* Remove nfd */
+					ev.events = EPOLLIN;
+					ev.data.fd = nfd;
+					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,nfd,&ev) == -1){
+						perror("epoll_ctl, ");
+						raise(SIGUSR1);	
+					}
+					/* Remove sfd */
+					ev.events = EPOLLIN;
+					ev.data.fd = sfd;
+					if(epoll_ctl(epollfd,EPOLL_CTL_DEL,sfd,&ev) == -1){
+						perror("epoll_ctl, ");
+						raise(SIGUSR1);	
+					}					
+					close(nfd);
+					close(ufd);
+					close(sfd);
+					releaseState(&state);
+					return 0;
+		}
+
 		if(checktime(&pt,&ct,ACKTOU)){
 			timeout(&state,sfd);
 			gettimeofday(&pt,NULL);
 		}						
 	}
 	raise(SIGUSR1);
+	return 0;
 }

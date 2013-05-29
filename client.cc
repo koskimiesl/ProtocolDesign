@@ -97,7 +97,6 @@ int main(int argc,char *argv[]){
 			continue;
 		}
 		else if(FD_ISSET(0,&rfds)){
-			scr.status("kk");
 			ch = wgetch(scr.getIPWin());
 			if(ch == KEY_DOWN){
 				scr.moveWinDown();
@@ -112,8 +111,10 @@ int main(int argc,char *argv[]){
 				scr.switchtab();		
 			}
 			else if(ch == 27){
+				scr.status("Wait,Exiting...");
 				close(ufd);
-				kill(pid,SIGINT);//capture and clear all 
+				//kill(pid,SIGINT);//capture and clear all 
+				sleep(4);				
 				return 0;		
 			}
 			else if(ch == 'R' || ch == 'r'){ //refresh,get sensors list	
@@ -185,9 +186,7 @@ int main(int argc,char *argv[]){
 				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 				req = NONE;
 			}
-			else if(cmd == "UPDATES"){
-				std::stringstream cc;
-				cc << rsize;	
+			else if(cmd == "UPDATES"){	
 				memcpy(tbuff,p+4,text.getSize());
 				std::vector<std::string> t = text.getDeviceIDs();
 				std::string binarytest(tbuff, 9);
@@ -196,7 +195,6 @@ int main(int argc,char *argv[]){
 						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true);
 					else
 						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false);
-				scr.status(cc.str().c_str());
 				req = NONE;
 			}
 		}
