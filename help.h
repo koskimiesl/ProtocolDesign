@@ -15,7 +15,13 @@
 #define PORTLEN 10
 //#define vv
 
+enum State{
+	LOST,
+	RECEIVED
+};
+
 int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
+int getNextState(int, double, double);
 
 #endif
