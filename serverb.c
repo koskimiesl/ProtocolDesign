@@ -27,6 +27,7 @@ int create_connect(){
 		close(ufd);
 		return -1;	
 	}
+	printf("XXXXXXXXXXXXXXXXXXXX: %d\n",setnget(ufd));
 	return ufd;
 }
 

@@ -23,5 +23,5 @@ enum Event{
 int custom_socket(int ,const char []);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
 int getNextState(int, double, double);
-
+int setnget(int fd);
 #endif
