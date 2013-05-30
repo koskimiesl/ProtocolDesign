@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 					if (rsize == 0)
 					{
 						#ifdef vv
-						std::cout << "client closed connection, cleaning client data" << std::endl;
+						std::cout << "client closed connection, cleaning client data...";
 						#endif
 						std::map< std::string, std::vector<int> >::iterator it;
 						for (it = sublists.begin(); it != sublists.end(); it++) // remove subscriptions for this client
@@ -219,11 +219,19 @@ int main(int argc, char *argv[])
 							std::cerr << "failed to remove client ID" << std::endl;
 							return -1;
 						}
+						std::vector<int>::iterator itrt = std::find(fds.begin(), fds.end(), fds[c]);
+						if (itrt != fds.end())
+							fds.erase(itrt);
+						else
+							std::cerr << "failed to remove file descriptor" << std::endl;
 						if (close(fds[c]) == -1)
 						{
 							perror("close");
 							return -1;
 						}
+						#ifdef vv
+						std::cout << "cleaned" << std::endl;
+						#endif
 						continue;
 					}
 					text.updateMessage((char*)buff);
