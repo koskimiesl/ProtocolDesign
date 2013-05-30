@@ -185,8 +185,12 @@ int main(int argc,char *argv[]){
 			cmd = text.getCommand();
 			if(cmd == "OK" && req == LIST){
 				list = text.getDeviceIDs();
-				scr.addAList(list);
-				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+				if(list.size() == 0)
+					scr.status("No sensors to subscribe");
+				else{
+					scr.addAList(list);
+					scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+				}
 				req = NONE;
 			}
 			else if(cmd == "OK" && req == SUBS){
