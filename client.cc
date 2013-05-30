@@ -96,7 +96,6 @@ int main(int argc,char *argv[]){
 		return -1;
 	std::stringstream mm;
 	mm << setngetR(ufd);
-	scr.status(mm.str().c_str());
 	// kill process
 	// ncurses
 	Screen scr;
