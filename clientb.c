@@ -169,6 +169,8 @@ int main(int argc,char *argv[]){
 	confirm = false;
 	fd = open("logclient.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 	dup2(fd,1);
+	int count;
+	count = 0;
 	while(1){
 		if( (nfds = epoll_wait(epollfd,events,2,600)) == -1){
 			perror("epoll_wait, ");
@@ -266,7 +268,8 @@ int main(int argc,char *argv[]){
 		perror("epoll_ctl, ");
 		raise(SIGUSR1);	
 	}
-
+	setngetS(nfd);
+	
 	idx = 0;
 	gettimeofday(&pt,NULL);
 	gettimeofday(&(state.kt),NULL);
@@ -365,6 +368,7 @@ int main(int argc,char *argv[]){
 									if(!(queue->frag)){
 										send(nfd,fbuff,idx,0);
 										idx = 0;									
+										printf("Count %d\n",count++);				
 									}
 									list_del(pos);
 									free(queue);

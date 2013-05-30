@@ -42,6 +42,7 @@ int main(int argc,char *argv[]){
 	int ret;
 	int ufd;
 	size_t rsize;
+	int count = 0;
 	struct timespec t;
 	t.tv_sec = 1;
 	t.tv_nsec = 0;
@@ -87,6 +88,7 @@ int main(int argc,char *argv[]){
 	sleep(5);
 	if( (ufd = connect()) == -1)
 		return -1;
+	setngetR(ufd);
 	// kill process
 	// ncurses
 	Screen scr;
@@ -153,6 +155,10 @@ int main(int argc,char *argv[]){
 		else if(FD_ISSET(ufd,&rfds)){
 			//read
 			rsize = recv(ufd,buff,BUFF_SIZE,0);
+			std::stringstream mm;
+			mm << count;
+			scr.status(mm.str().c_str());
+			count++;			
 			if (rsize == 0)
 			{
 				if (close(ufd) == -1)
@@ -193,7 +199,7 @@ int main(int argc,char *argv[]){
 						std::cerr << "client was not previously subscribed to this sensor" << std::endl;
 				}
 				scr.addSList(prevList);
-				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+				//scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 				req = NONE;
 			}
 			else if(cmd == "UPDATES"){	

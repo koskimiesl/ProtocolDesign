@@ -102,13 +102,24 @@ int getNextState(int previous, double p, double q)
 	}
 }
 
-int setnget(int fd){
-	int a = 65535;	
+int setngetR(int fd){
+	int a = 200000;	
 	socklen_t s;
 	s = sizeof(int);
 	if(setsockopt(fd,SOL_SOCKET,SO_RCVBUF,&a,s) == -1)
 		return -1;
 	if(getsockopt(fd,SOL_SOCKET,SO_RCVBUF,&a,&s) == -1)
+		return -1;
+	return a;
+}
+
+int setngetS(int fd){
+	int a = 200000;	
+	socklen_t s;
+	s = sizeof(int);
+	if(setsockopt(fd,SOL_SOCKET,SO_SNDBUF,&a,s) == -1)
+		return -1;
+	if(getsockopt(fd,SOL_SOCKET,SO_SNDBUF,&a,&s) == -1)
 		return -1;
 	return a;
 }
