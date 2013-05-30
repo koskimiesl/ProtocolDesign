@@ -80,6 +80,9 @@ int custom_socket(int family,const char port[]){
 // otherwise loss is dependent of previous state
 int getNextState(int previous, double p, double q)
 {
+	if (p == 0.0 && q == 0.0)
+		return RECEIVED;
+	
 	if (!(previous == LOST || previous == RECEIVED)) // invalid previous state
 		return -1;
 	if (p < 0 || p > 1 || q < 0 || q > 1) // invalid loss ratio
