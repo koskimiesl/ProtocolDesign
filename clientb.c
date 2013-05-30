@@ -287,7 +287,7 @@ int main(int argc,char *argv[]){
 					continue;				
 				}
 				else if(rsize >= 8){
-					event = getNextState(event,0.1,0.1);
+					event = getNextState(event,strtod(argv[2],NULL),strtod(argv[3],NULL));
 					if(!event)
 						continue;
 					gettimeofday(&(state.kt),NULL);

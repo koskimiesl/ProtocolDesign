@@ -25,6 +25,7 @@
 
 #define IDLEN 10
 #define IPLEN 20
+#define LOSSLEN 10
 #define PORTLEN 10
 #define SOCK_PATH "echo_client"
 

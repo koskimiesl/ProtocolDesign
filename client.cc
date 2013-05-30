@@ -24,7 +24,7 @@ int connect(){
 }
 
 int main(int argc,char *argv[]){
-	char ip[IPLEN],port[PORTLEN],id[IDLEN];
+	char ip[IPLEN],port[PORTLEN],id[IDLEN],lossp[LOSSLEN],lossq[LOSSLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
 	char * p;
@@ -49,7 +49,7 @@ int main(int argc,char *argv[]){
 	req = NONE;
 
 	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:i:")) != -1){
+	while( (opt = getopt(argc,argv, "s:p:i:P:Q:")) != -1){
 		switch(opt){
 			case 's':
 				strncpy(ip,optarg,IPLEN);
@@ -59,6 +59,12 @@ int main(int argc,char *argv[]){
 				break;
 			case 'i':
 				strncpy(id,optarg,IDLEN);
+				break;
+			case 'P':
+				strncpy(lossp,optarg,LOSSLEN);
+				break;
+			case 'Q':
+				strncpy(lossq,optarg,LOSSLEN);
 				break;
 			case '?':
 				return -1;
@@ -78,7 +84,7 @@ int main(int argc,char *argv[]){
 		return -1;
 	}
 	else if(pid == 0){
-		if(execl("clientb",ip,port,(void *)0) == -1){
+		if(execl("clientb",ip,port,lossp,lossq,(void *)0) == -1){
 			perror("execl");
 			return -1;		
 		}
@@ -161,7 +167,7 @@ int main(int argc,char *argv[]){
 					return -1;
 				}
 				return 0;
-			}		
+			}
 			p = strstr(buff,"\r\n\r\n");
 			memset(tbuff, 0, BUFF_SIZE); // clear previous messages
 			memcpy(tbuff,buff,p-buff+1);
