@@ -166,3 +166,14 @@ double getTimeStamp()
 	ss >> timestamp;
 	return timestamp;
 }
+
+int setnget(int fd){
+	int a = 65535;
+	socklen_t s;
+	s = sizeof(int);
+	if(setsockopt(fd,SOL_SOCKET,SO_SNDBUF,&a,s) == -1)
+		return -1;
+	if(getsockopt(fd,SOL_SOCKET,SO_SNDBUF,&a,&s) == -1)
+		return -1;
+	return a;
+}

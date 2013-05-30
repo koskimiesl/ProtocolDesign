@@ -288,8 +288,8 @@ int main(int argc,char *argv[]){
 				}
 				else if(rsize >= 8){
 					event = getNextState(event,0.1,0.1);
-					//if(!event)
-					//	continue;
+					if(!event)
+						continue;
 					gettimeofday(&(state.kt),NULL);
 					memcpy(icp.buffer,ibuff,8);
 					toValues(&icp);

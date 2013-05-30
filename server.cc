@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
 				else if (fds[c] == sfd) // connection from new client
 				{
 					temp = accept(sfd, NULL, NULL);
+					std::cout << setnget(temp) << std::endl;
 					fds.push_back(temp);
 				}
 				else // data from existing client
