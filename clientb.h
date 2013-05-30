@@ -15,6 +15,8 @@
 #include<unistd.h>
 #include<errno.h>
 #include<string.h>
+#include<sys/stat.h>
+#include<fcntl.h>
 
 #include"help.h"
 #include"state.h"

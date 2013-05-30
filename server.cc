@@ -87,9 +87,11 @@ int main(int argc, char *argv[])
 	std::string str;
 	std::string cmd;
 	int temp;
-	
+	int wr;
+	int count;
+	count = 0;
 	#ifdef vv
-	std::cout << "server started" << std::endl;
+	std::cout << "Server started" << std::endl;
 	#endif
 
 	while (1)
@@ -182,9 +184,10 @@ int main(int argc, char *argv[])
 										double ts = getTimeStamp();
 										logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
 									}
-									send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
+									wr = send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
+									std::cout<<"UTotal"<<count++<<std::endl;				
 									std::cout<<"Size: "<<
-								sensormsg.datasize+str.size()<<std::endl;								
+								sensormsg.datasize+str.size()<<"\t"<<wr<<std::endl;								
 								}
 							}
 						}

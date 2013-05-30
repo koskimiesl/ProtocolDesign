@@ -58,26 +58,22 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 			if( a < state->ack || a > (32767+state->ack) )
 				return;
 		}
-		// more protection
-		do {
+		while(state->ack <= a){
 			list_for_each_safe(pos,q,&(state->out.list)){
 				tmp = list_entry(pos,struct Queue,list);
 				if(tmp->seq == state->ack){
-					state->window += tmp->size * 2;					
 					list_del(pos);
 					free(tmp);
 					break;
-				}					
+				}
 			}
 			state->ack = (state->ack == 65535)?1:(state->ack)+1;
 		}
-		while(state->ack <= a);
 	}
 	else if(ackbit){
 		list_for_each_safe(pos,q,&(state->out.list)){
 			tmp = list_entry(pos,struct Queue,list);
 			if(tmp->seq == a){
-				state->window += tmp->size/2;
 				list_del(pos);
 				free(tmp);
 				break;	
@@ -113,13 +109,11 @@ int ackThat(struct State * state,unsigned short a){
 	}
 
 	else {
-
 		list_for_each(pos,&((state->racks).list)){
 			tmp = list_entry(pos,struct Int,list);
 			if(tmp->seq == a)
 				return -1;
 		}
-
 		tmp = (struct Int *)malloc(sizeof(struct Int));
 		tmp->seq = a;
 		list_add_tail(&(tmp->list),&((state->racks).list));
@@ -138,7 +132,6 @@ void addOutPacketToState(struct State * state,unsigned char * packet,unsigned sh
  	tmp->size = (unsigned short)size;
 	tmp->sent = false;
 	gettimeofday(&(tmp->st),NULL);
-	printf("Z %d %d\n",(int)(tmp->st).tv_sec,(int)(tmp->st).tv_usec);
 	list_add_tail(&(tmp->list),&((state->out).list));		
 }
 
@@ -154,12 +147,16 @@ void addInPacketToState(struct State * state,unsigned char * packet,unsigned sho
 	list_add_tail(&(tmp->list),&((state->in).list));	
 }
 
-bool checktime(struct timeval *pt,struct timeval *ct,size_t gap){
-	if( ((ct->tv_sec) - (pt->tv_sec)) > 0)
+bool checktime(struct timeval *pt,struct timeval *ct,suseconds_t gap){
+	struct timeval nt;	
+	gettimeofday(&nt,NULL);
+	if( ((nt.tv_sec) - (pt->tv_sec)) > 0)
 		return true;
-	//if( ((ct->tv_sec) - (pt->tv_sec)) == 0)
-	//	if( ((ct->tv_usec) - (ct->tv_usec)) > gap)
-	//		return true;			
+	if(gap == 0)
+		return false;
+	if( (nt.tv_sec) == (pt->tv_sec) )
+		if( ((nt.tv_usec) - (pt->tv_usec)) > gap)
+			return true;			
 	return false;
 }	 
 
@@ -192,4 +189,9 @@ void releaseState(struct State * state){
 		free(i);
 		printf("%u\t",x++);	
 	}
+}
+
+
+void printState(struct State * state){
+	printf("%d %d %d %d %d\n",state->seq,state->ack,state->rack,state->sentup,state->sentdown);
 }

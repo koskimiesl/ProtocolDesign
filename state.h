@@ -71,5 +71,6 @@ void addOutPacketToState(struct State * state,unsigned char * packet,unsigned sh
 int size,unsigned char frag);
 void addInPacketToState(struct State * state,unsigned char * packet,unsigned short seq,
 int size,unsigned char frag);
-bool checktime(struct timeval *pt,struct timeval *ct,size_t gap);
+bool checktime(struct timeval *pt,struct timeval *ct,suseconds_t gap);
+void printState(struct State * state);
 #endif

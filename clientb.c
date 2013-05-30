@@ -1,11 +1,6 @@
 /* Client Binary protocol */
 #include"clientb.h"
 
-#define INITTO 400
-#define ACKTO 200
-#define ACKTOU 200000
-#define RETRTOU 600000
-
 /* Handle signal */
 void signalhandler(int signo){
 	switch(signo){
@@ -34,6 +29,7 @@ void sendPacket(struct State * state,int sfd){
 									queue->size,queue->seq,state->rack);
 				state->ackreq = false;
 				toBinary(&icp);
+				printICPOut(&icp);
 				memcpy(obuff,icp.buffer,8);
 				memcpy(obuff+8,queue->buffer,queue->size);
 				sendto(sfd,(char *)obuff,(queue->size)+8,0,&(state->addr),state->len);
@@ -54,9 +50,23 @@ void sendAck(struct State * state,int sfd){
 	memset(&icp,0,sizeof(struct ICP));
 	updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state->seq,state->rack);
 	toBinary(&icp);
+	printf("Ack\n");
+	printICPOut(&icp);
 	memcpy(obuff,icp.buffer,8);
 	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
 	state->ackreq = false;
+}
+
+void sendIAck(struct State * state,unsigned short ack,int sfd){
+	struct ICP icp;
+	char obuff[1008];	
+	memset(&icp,0,sizeof(struct ICP));
+	updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,0x0000,state->seq,ack);
+	toBinary(&icp);
+	printf("IAck\n");
+	printICPOut(&icp);
+	memcpy(obuff,icp.buffer,8);
+	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
 }
 
 void timeout(struct State * state,int sfd){
@@ -70,14 +80,16 @@ void timeout(struct State * state,int sfd){
 	if(state->ackreq)
 		sendAck(state,sfd);
 	gettimeofday(&ct,NULL);
-	list_for_each(pos,&((state->out).list)){
+	list_for_each(pos,&(state->out.list)){
 		queue = list_entry(pos,struct Queue,list);
-		if(queue->sent && checktime(&(queue->st),&ct,RETRTOU))
+		if(queue->sent && checktime(&(queue->st),&ct,0))
 			/* Update ICP */
 			updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,
 								queue->size,queue->seq,state->rack);
 			state->ackreq = false;
 			toBinary(&icp);
+			printf("Resent\n");
+			printICPOut(&icp);
 			memcpy(obuff,icp.buffer,8);
 			memcpy(obuff+8,queue->buffer,queue->size);
 			sendto(sfd,(char *)obuff,(queue->size)+8,0,&(state->addr),state->len);
@@ -132,6 +144,7 @@ int main(int argc,char *argv[]){
 	struct list_head *pos,*q;
 	struct Queue * queue;
 	enum Event event;
+	int fd;
 	if( (ufd = create_listen()) == -1){
 		raise(SIGUSR1);		
 	}	
@@ -154,8 +167,10 @@ int main(int argc,char *argv[]){
 	initState(&state);	
 	sfd = -1;
 	confirm = false;
+	fd = open("logclient.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+	dup2(fd,1);
 	while(1){
-		if( (nfds = epoll_wait(epollfd,events,2,INITTO)) == -1){
+		if( (nfds = epoll_wait(epollfd,events,2,600)) == -1){
 			perror("epoll_wait, ");
 			raise(SIGUSR1);		
 		}
@@ -164,6 +179,7 @@ int main(int argc,char *argv[]){
 				/* Create packet with start bit set */
 				updateICP(&icp,0x01,0x00,0x00,0x00,0x00,0x00,0x0000,state.seq,0x0000);
 				toBinary(&icp);
+				printICPOut(&icp);				
 				memcpy(obuff,icp.buffer,8);
 				/* Send connect packet */
 				sendto(sfd,(char*)obuff,8,0,&d_addr,sizeof(d_addr));	
@@ -182,6 +198,7 @@ int main(int argc,char *argv[]){
 				state.sentdown = state.seq;
 				updateICP(&icp,0x01,0x00,0x00,0x00,0x00,0x00,0x0000,state.seq,0x0000);	
 				toBinary(&icp);
+				printICPOut(&icp);
 				memcpy(obuff,icp.buffer,8);
 				/* Send connect packet */
 				sendto(sfd,(char*)obuff,8,0,&d_addr,sizeof(d_addr));
@@ -211,13 +228,16 @@ int main(int argc,char *argv[]){
 					if(icp.version != 0x01)
 						continue;					
 					toValues(&icp);
+					printICPIn(&icp);
 					if(icp.startbit == 0x01 && state.status == RC){
 						/* Update state */ 
 						state.status = CT;		
 						state.rack = icp.seq;
-						state.sentup = icp.seq;			
+						state.sentup = icp.seq;
+						state.ack = (state.ack == 65535)?1:(state.ack)+1;			
 						updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state.seq,state.rack);
 						toBinary(&icp);
+						printICPOut(&icp);						
 						memcpy(obuff,icp.buffer,8);
 						confirm = true;					
 						/* Send packet */
@@ -226,11 +246,13 @@ int main(int argc,char *argv[]){
 					else if(icp.startbit == 0x01 && state.status == CT && state.rack == icp.seq){
 						updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state.seq,state.rack);
 						toBinary(&icp);
+						printICPOut(&icp);
 						memcpy(obuff,icp.buffer,8);
 						confirm = true;					
 						/* Send packet */
 						sendto(sfd,(char*)obuff,8,0,&d_addr,sizeof(d_addr));
 					}
+					printState(&state);
 				}			
 			}
 		}
@@ -250,7 +272,7 @@ int main(int argc,char *argv[]){
 	gettimeofday(&(state.kt),NULL);
 	event = RECEIVED;
 	while(1){
-		if( (nfds = epoll_wait(epollfd,events,2,ACKTO)) == -1){
+		if( (nfds = epoll_wait(epollfd,events,2,200)) == -1){
 			perror("epoll_wait, ");
 			raise(SIGUSR1);		
 		}
@@ -266,11 +288,12 @@ int main(int argc,char *argv[]){
 				}
 				else if(rsize >= 8){
 					event = getNextState(event,0.1,0.1);
-					if(!event)
-						continue;
+					//if(!event)
+					//	continue;
 					gettimeofday(&(state.kt),NULL);
 					memcpy(icp.buffer,ibuff,8);
 					toValues(&icp);
+					printICPIn(&icp);
 					if( icp.version != 0x01)
 						continue;
 					if(icp.endbit == 0x01 && state.status == CT){
@@ -286,6 +309,7 @@ int main(int argc,char *argv[]){
 						/* Send ack */
 						updateICP(&icp,0x00,0x01,0x00,0x00,0x00,0x00,0x0000,state.seq,icp.seq);
 						toBinary(&icp);
+						printICPOut(&icp);
 						memcpy(obuff,icp.buffer,8);
 						sendto(sfd,(char*)obuff,8,0,&(state.addr),state.len);
 						break;
@@ -303,14 +327,14 @@ int main(int argc,char *argv[]){
 					}
 					else if(icp.size != 0 && state.status == CT){
 						if(state.rack > 32768){
-							if(icp.seq < state.rack && icp.seq > ((state.rack)-32768)){
+							if(icp.seq <= state.rack && icp.seq > ((state.rack)-32768)){
 								//send ack							
 								sendAck(&state,sfd);		
 								continue;
 							}
 						} 
 						else if(state.rack <= 32768){
-							if( icp.seq < state.rack || icp.seq > (32767+(state.rack)) ){
+							if( icp.seq <= state.rack || icp.seq > (32767+(state.rack)) ){
 								//send ack
 								sendAck(&state,sfd);
 								continue;
@@ -321,10 +345,7 @@ int main(int argc,char *argv[]){
 						ret = ackThat(&state,icp.seq);
 						if(ret == 0 || ret == -1){
 							/* Immediate ack */
-							updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,0x0000,state.seq,icp.seq);
-							toBinary(&icp);
-							memcpy(obuff,icp.buffer,8);
-							sendto(sfd,(char*)obuff,8,0,&(state.addr),state.len);
+							sendIAck(&state,icp.seq,sfd);
 						}			
 						if(ret == -1)
 							continue;
@@ -355,14 +376,14 @@ int main(int argc,char *argv[]){
 								break;				
 						}
 					}
-					
+					printState(&state);	
 				}			
 			}
 			else if(events[n].data.fd == nfd){
 				if( (rsize = recv(nfd,(char *)ibuff,BUFF_SIZE,0)) > 0){
 					t = (rsize-1)/1000;
 					for(k = 0; k <= t; k++){
-						state.seq = (state.seq==65535)?1:state.seq+1;
+						state.seq = ((state.seq)==65535)?1:(state.seq)+1;
 						tsize = (rsize > 1000)?1000:rsize;
 						tfrag = (k == t)?0x00:0x01;
 						memcpy(obuff,ibuff+k*1000,tsize);
@@ -418,7 +439,7 @@ int main(int argc,char *argv[]){
 			return 0;
 		}
 
-		if(checktime(&pt,&ct,ACKTOU)){
+		if(checktime(&pt,&ct,200000)){
 			timeout(&state,sfd);
 			gettimeofday(&pt,NULL);
 		}						
