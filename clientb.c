@@ -170,6 +170,7 @@ int main(int argc,char *argv[]){
 	fd = open("logclient.txt",O_WRONLY|O_CREAT,S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
 	dup2(fd,1);
 	int count;
+	int code;
 	count = 0;
 	while(1){
 		if( (nfds = epoll_wait(epollfd,events,2,600)) == -1){
@@ -366,9 +367,9 @@ int main(int argc,char *argv[]){
 									memcpy(fbuff+idx,queue->buffer,queue->size);
 									idx += queue->size;
 									if(!(queue->frag)){
-										send(nfd,fbuff,idx,0);
-										idx = 0;									
-										printf("Count %d\n",count++);				
+										code=send(nfd,fbuff,idx,0);									
+										printf("Count %d Code %d %u \n",count++,code,(unsigned int)idx);
+										idx = 0;				
 									}
 									list_del(pos);
 									free(queue);

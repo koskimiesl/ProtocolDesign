@@ -248,6 +248,7 @@ int main(int argc, char *argv[])
 						str = text.createListReply();
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
+						std::cout<<"UTotal"<<count++<<std::endl;
 					}
 					else if (cmd == "SUBSCRIBE")
 					{
@@ -297,6 +298,7 @@ int main(int argc, char *argv[])
 						#endif
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
+						std::cout<<"UTotal"<<count++<<std::endl;
 					}
 					else if (cmd == "UNSUBSCRIBE")
 					{
@@ -354,6 +356,7 @@ int main(int argc, char *argv[])
 						#endif
 						memcpy((char *)buff, str.c_str(), str.size());
 						send(fds[c], (char *)buff, str.size(), 0);
+						std::cout<<"UTotal"<<count++<<std::endl;
 					}
 				}
 			}

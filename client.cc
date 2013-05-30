@@ -94,10 +94,13 @@ int main(int argc,char *argv[]){
 	sleep(5);
 	if( (ufd = connect()) == -1)
 		return -1;
-	setngetR(ufd);
+	std::stringstream mm;
+	mm << setngetR(ufd);
+	scr.status(mm.str().c_str());
 	// kill process
 	// ncurses
 	Screen scr;
+	scr.status(mm.str().c_str());
 	while(1){
 		FD_ZERO(&rfds);
 		FD_SET(ufd,&rfds);
