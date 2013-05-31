@@ -162,7 +162,7 @@ double getTimeStamp()
 	gettimeofday(&tv, NULL);
 	double timestamp = (double)tv.tv_sec + (double)1e-6 * tv.tv_usec;
 	std::stringstream ss;
-	ss << std::setprecision(3) << std::setiosflags(std::ios_base::fixed) << timestamp;
+	ss << std::setprecision(2) << std::setiosflags(std::ios_base::fixed) << timestamp;
 	ss >> timestamp;
 	return timestamp;
 }
