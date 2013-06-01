@@ -27,9 +27,9 @@ int main(int argc,char *argv[]){
 	char ip[IPLEN],port[PORTLEN],id[IDLEN],lossp[LOSSLEN],lossq[LOSSLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
-	char * p;
+	char * p,*ptr;
+	int advance;
 	CommMessage text;	
-	
 	pid_t pid;
 	std::string cmd;
 	std::vector<std::string> list;
@@ -176,54 +176,62 @@ int main(int argc,char *argv[]){
 				}
 				return 0;
 			}
-			p = strstr(buff,"\r\n\r\n");
-			memset(tbuff, 0, BUFF_SIZE); // clear previous messages
-			memcpy(tbuff,buff,p-buff+1);
-			text.updateMessage(tbuff);
-			text.parse();
-			cmd = text.getCommand();
-			if(cmd == "OK" && req == LIST){
-				list = text.getDeviceIDs();
-				if(list.size() == 0)
-					scr.status("No sensors to subscribe");
-				else{
-					scr.addAList(list);
+			ptr = buff;
+			while(rsize > 0){
+				text.updateSize(0);
+				p = strstr(ptr,"\r\n\r\n");
+				memset(tbuff, 0, BUFF_SIZE); // clear previous messages
+				memcpy(tbuff,ptr,p-ptr+1);
+				text.updateMessage(tbuff);
+				text.parse();
+				cmd = text.getCommand();
+				if(cmd == "OK" && req == LIST){
+					list = text.getDeviceIDs();
+					if(list.size() == 0)
+						scr.status("No sensors to subscribe");
+					else{
+						scr.addAList(list);
+						scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+					}
+					req = NONE;
+				}
+				else if(cmd == "OK" && req == SUBS){
+					list = text.getDeviceIDs();
+					scr.addSList(list);
 					scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+					req = NONE;			
+				}	
+				else if(cmd == "OK" && req == UNSUBS){
+					list = text.getDeviceIDs();
+					std::vector<std::string> prevList = scr.getPList();
+					std::vector<std::string>::const_iterator it;
+					for (it = list.begin(); it != list.end(); it++)
+					{
+						std::vector<std::string>::iterator itr = std::find(prevList.begin(), prevList.end(), *it);
+						if (itr != prevList.end())
+							prevList.erase(itr);
+						else
+							std::cerr << "client was not previously subscribed to this sensor" << std::endl;
+					}
+					scr.addSList(prevList);
+					//scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+					req = NONE;
 				}
-				req = NONE;
-			}
-			else if(cmd == "OK" && req == SUBS){
-				list = text.getDeviceIDs();
-				scr.addSList(list);
-				scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
-				req = NONE;			
-			}
-			else if(cmd == "OK" && req == UNSUBS){
-				list = text.getDeviceIDs();
-				std::vector<std::string> prevList = scr.getPList();
-				std::vector<std::string>::const_iterator it;
-				for (it = list.begin(); it != list.end(); it++)
-				{
-					std::vector<std::string>::iterator itr = std::find(prevList.begin(), prevList.end(), *it);
-					if (itr != prevList.end())
-						prevList.erase(itr);
-					else
-						std::cerr << "client was not previously subscribed to this sensor" << std::endl;
+				else if(cmd == "UPDATES"){	
+					memcpy(tbuff,p+4,text.getSize());
+					std::vector<std::string> t = text.getDeviceIDs();
+					std::string binarytest(tbuff, 9);
+					for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
+						if (itr->find("camera") != std::string::npos && binarytest != "NO_MOTION")
+							logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true, text.getSeqNumber());
+						else
+							logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false, text.getSeqNumber());
+					req = NONE;
 				}
-				scr.addSList(prevList);
-				//scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
-				req = NONE;
-			}
-			else if(cmd == "UPDATES"){	
-				memcpy(tbuff,p+4,text.getSize());
-				std::vector<std::string> t = text.getDeviceIDs();
-				std::string binarytest(tbuff, 9);
-				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
-					if (itr->find("camera") != std::string::npos && binarytest != "NO_MOTION")
-						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true, text.getSeqNumber());
-					else
-						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false, text.getSeqNumber());
-				req = NONE;
+				advance = (p-ptr)+4+text.getSize(); 
+				ptr = ptr+advance;
+				rsize -= advance;
+				
 			}
 		}
 	}
