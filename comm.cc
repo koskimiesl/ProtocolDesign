@@ -45,7 +45,11 @@ bool CommMessage::parse(){
 		else if(sscanf(line.c_str(),"Size: %s",tempa) == 1){
 			size = (size_t)strtol(tempa,NULL,10);
 			continue;	
-		}	
+		}
+		else if(sscanf(line.c_str(),"SeqNumber: %s",tempa) == 1){
+			seqno = (size_t)strtol(tempa,NULL,10);
+			continue;
+		}
 		else if(sscanf(line.c_str(),"TimeStamp: %s",tempa) == 1){
 			timestamp = tempa;
 			continue;		
@@ -82,6 +86,10 @@ std::string CommMessage::getClientID(){
 
 std::string CommMessage::getServerID(){
 	return serverID;
+}
+
+size_t CommMessage::getSeqNumber(){
+	return seqno;
 }
 
 std::string CommMessage::getTimeStamp(){
@@ -123,6 +131,10 @@ void CommMessage::updateCount(size_t c){
 
 void CommMessage::updateSize(size_t s){
 	size = s;
+}
+
+void CommMessage::updateSeqNo(size_t sn){
+	seqno = sn;
 }
 
 void CommMessage::updateTimeStamp(std::string t){
@@ -207,10 +219,12 @@ std::string CommMessage::createUnsubscribeReply(){
 std::string CommMessage::createUpdatesMessage(){
 	std::string str;
 	std::vector<std::string>::iterator itr;	
-	std::stringstream ss,cc;
+	std::stringstream ss,cc,snsn;
 	ss << size;
 	cc << count;
+	snsn << seqno;
 	str = "UPDATES IoTPS\\"+version+"\r\nCount: "+cc.str()+"\r\nSize: "+ss.str()+"\r\n";
+	str += "SeqNumber: "+snsn.str()+"\r\n";
 	str += "TimeStamp: "+timestamp+"\r\n";
 	for(itr = deviceIDs.begin();itr != deviceIDs.end();itr++)
 		str+="DeviceID: "+(*itr)+"\r\n";

@@ -157,6 +157,7 @@ int main(int argc, char *argv[])
 									std::vector<std::string> tt;
 									tt.push_back(sensormsg.deviceid);
 									text.updateDeviceIDs(tt);
+									text.updateSeqNo(sensormsg.seqno);
 									text.updateTimeStamp(sensormsg.sensorts);
 									str = text.createUpdatesMessage();
 									memset(obuff, 0, SBUFFSIZE); // clear previous messages
@@ -168,26 +169,25 @@ int main(int argc, char *argv[])
 										{
 											memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 											double ts = getTimeStamp();
-											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
+											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false, sensormsg.seqno);
 										}
 										else // append binary data
 										{
 											unsigned char camdata[sensormsg.datasize];
 											sensormsg.camDataToArray(camdata);
 											memcpy((char*)obuff + str.size(), camdata, sensormsg.datasize);
-											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true);
+											logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, true, sensormsg.seqno);
 										}
 									}
 									else
 									{
 										memcpy((char*)obuff + str.size(), sensormsg.sensordata.c_str(), sensormsg.datasize);
 										double ts = getTimeStamp();
-										logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false);
+										logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false, sensormsg.seqno);
 									}
 									wr = send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
 									std::cout<<"UTotal"<<count++<<std::endl;				
-									std::cout<<"Size: "<<
-								sensormsg.datasize+str.size()<<"\t"<<wr<<std::endl;								
+									std::cout<<"Size: "<< sensormsg.datasize+str.size()<<"\t"<<wr<<std::endl;
 								}
 							}
 						}

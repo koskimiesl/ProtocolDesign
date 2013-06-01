@@ -24,6 +24,7 @@ public:
 	std::string getVersion();
 	std::string getClientID();
 	std::string getServerID();
+	size_t getSeqNumber();
 	std::string getTimeStamp();
 	size_t getCount();
 	size_t getSize();
@@ -48,6 +49,7 @@ public:
 	void updateServerID(std::string sID);
 	void updateCount(size_t count);
 	void updateSize(size_t size);
+	void updateSeqNo(size_t sn);
 	void updateTimeStamp(std::string t);
 	void updateDeviceIDs(std::vector<std::string> dIdDs);
   
@@ -57,7 +59,8 @@ private:
 	std::string version;
 	std::string clientID;
 	std::string serverID;
-	std::string timestamp;	
+	std::string timestamp;
+	size_t seqno;
 	size_t count;
 	std::vector<std::string> deviceIDs;
 	size_t size; // in bytes

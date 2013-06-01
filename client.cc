@@ -220,9 +220,9 @@ int main(int argc,char *argv[]){
 				std::string binarytest(tbuff, 9);
 				for(std::vector<std::string>::iterator itr = t.begin();itr != t.end();itr++)
 					if (itr->find("camera") != std::string::npos && binarytest != "NO_MOTION")
-						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true);
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true, text.getSeqNumber());
 					else
-						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false);
+						logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false, text.getSeqNumber());
 				req = NONE;
 			}
 		}
