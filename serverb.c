@@ -118,7 +118,7 @@ void timeout(struct State * s,int sfd){
 			sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
 		}
 		// if no acks arrive
-		state->window += 2;
+		state->window += 100;
 		list_for_each(idx,&(state->out.list)){
 			queue = list_entry(idx,struct Queue,list);
 			if( queue->sent && checktime(&(queue->st),&ct,0) && state->window > 2*(queue->size) ){
