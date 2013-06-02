@@ -98,6 +98,7 @@ int main(int argc,char *argv[]){
 	// kill process
 	// ncurses
 	Screen scr;
+	req = NONE;
 	while(1){
 		FD_ZERO(&rfds);
 		FD_SET(ufd,&rfds);
@@ -220,7 +221,7 @@ int main(int argc,char *argv[]){
 							logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), true, text.getSeqNumber());
 						else
 							logClientIncoming(dirname, *itr, tbuff, text.getSize(), text.getTimeStamp(), getTimeStamp(), false, text.getSeqNumber());
-					req = NONE;
+					//req = NONE;
 				}
 				advance = (p-ptr)+4+text.getSize(); 
 				ptr = ptr+advance;
