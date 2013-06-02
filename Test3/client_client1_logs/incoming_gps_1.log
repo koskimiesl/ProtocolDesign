@@ -1,0 +1,5 @@
+recv_ts: 1370198246.89	sensor_ts: 1370198246.88	delay: 0.01 s.		seq_number: 8		data: [60.182675, 24.795653]
+recv_ts: 1370198250.55	sensor_ts: 1370198250.55	delay: 0.00 s.		seq_number: 9		data: [60.182684, 24.795536]
+recv_ts: 1370198257.34	sensor_ts: 1370198257.34	delay: 0.00 s.		seq_number: 10		data: [60.182693, 24.795426]
+recv_ts: 1370198263.34	sensor_ts: 1370198263.34	delay: 0.00 s.		seq_number: 11		data: [60.182709, 24.795528]
+recv_ts: 1370198271.86	sensor_ts: 1370198271.86	delay: 0.00 s.		seq_number: 12		data: [60.182707, 24.795554]
