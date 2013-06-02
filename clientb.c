@@ -195,7 +195,7 @@ int main(int argc,char *argv[]){
 		for(n = 0; n < nfds; n++){
 			if(events[n].data.fd == ufd){
 				/* Create udp socket to remote host */
-				if( (sfd = custom_socket_remote(argv[0],argv[1],&d_addr)) == -1){
+				if( (sfd = custom_socket_remote(argv[0],argv[1],argv[5],&d_addr)) == -1){
 					//TODO				
 				}
 				/* Create packet with start bit set */

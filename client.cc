@@ -19,7 +19,7 @@ int connect(char * n){
 }
 
 int main(int argc,char *argv[]){
-	char ip[IPLEN],port[PORTLEN],id[IDLEN],lossp[LOSSLEN],lossq[LOSSLEN];
+	char ip[IPLEN],port[PORTLEN],id[IDLEN],lossp[LOSSLEN],lossq[LOSSLEN],localip[IPLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
 	char fname[50];
@@ -45,10 +45,13 @@ int main(int argc,char *argv[]){
 	req = NONE;
 
 	// Parse command line options
-	while( (opt = getopt(argc,argv, "s:p:i:P:Q:")) != -1){
+	while( (opt = getopt(argc,argv, "s:p:i:l:P:Q:")) != -1){
 		switch(opt){
 			case 's':
 				strncpy(ip,optarg,IPLEN);
+				break;
+			case 'l':
+				strncpy(localip,optarg,IPLEN);
 				break;
 			case 'p':
 				strncpy(port,optarg,PORTLEN);
@@ -82,7 +85,7 @@ int main(int argc,char *argv[]){
 		return -1;
 	}
 	else if(pid == 0){
-		if(execl("clientb",ip,port,lossp,lossq,fname,(void *)0) == -1){
+		if(execl("clientb",ip,port,lossp,lossq,fname,localip,(void *)0) == -1){
 			perror("execl");
 			return -1;		
 		}

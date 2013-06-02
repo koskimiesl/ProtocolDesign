@@ -20,15 +20,15 @@
 #include "logging.hh"
 #include "sensormsg.hh"
 #include "server.hh"
-
+#define IPLEN 48
 
 int main(int argc, char *argv[])
 {
 
 	char fname[50];
 	// parse command line options
-	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
-	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
+	char pport[PORTLEN], sport[PORTLEN],localip[IPLEN]; // publish port, subscribe port
+	if (getServerCmdLOpts(argc, argv, pport, sport,localip, PORTLEN) == -1)
 		return -1;
 
 	// create directory for log files
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	}
 	else if (pid == 0)
 	{
-		if (execl("serverb", sport,fname, (void*)0) == -1)
+		if (execl("serverb", sport,fname,localip, (void*)0) == -1)
 		{
 			error("execl");
 			return -1;

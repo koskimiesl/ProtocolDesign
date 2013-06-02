@@ -125,16 +125,19 @@ void error(std::string msg)
 	std::cerr << msg << ":" << strerror(errno) << std::endl;
 }
 
-int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, size_t portlen)
+int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, char * localip,size_t portlen)
 {
 	int n;
 	char opt;
-	while ((opt = getopt(argc, argv, "s:p:")) != -1)
+	while ((opt = getopt(argc, argv, "s:p:l")) != -1)
 	{
 		switch (opt)
 		{
 			case 's':
 				strncpy(sport, optarg, PORTLEN);
+				break;
+			case 'l':
+				strncpy(localip, optarg, PORTLEN);
 				break;
 			case 'p':
 				strncpy(pport, optarg, PORTLEN);

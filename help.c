@@ -4,7 +4,7 @@
 #include"help.h"
 
 /* Returns socket */
-int custom_socket_remote(const char ip[],const char port[],struct sockaddr * addr){
+int custom_socket_remote(const char ip[],const char port[],const char localip[],struct sockaddr * addr){
 	struct addrinfo hints;
     struct addrinfo *result, *rp;
     int sfd;
@@ -34,12 +34,26 @@ int custom_socket_remote(const char ip[],const char port[],struct sockaddr * add
 		sfd = -1;
 
 	freeaddrinfo(result);
+	
+	if(sfd != -1){
+		/* This part works for ipv4 only */
+		struct sockaddr_in laddr;
+		memset(&laddr,0,sizeof(struct sockaddr_in));
+		laddr.sin_family= AF_INET;
+		laddr.sin_port=0;
+		inet_pton(AF_INET,localip,(void*)&(laddr.sin_addr.s_addr)); 
 
+		if(bind(sfd,(struct sockaddr*)&laddr,sizeof(struct sockaddr_in))== -1){
+			perror("bind, ");			
+			sfd = -1;		
+		}
+
+	}
 	return sfd;
 }
 
 /* Returns socket. */
-int custom_socket(int family,const char port[]){
+int custom_socket(int family,const char port[],const char localip[]){
 	struct addrinfo hints,*result,*rp;
 	int sfd;
 	memset(&hints,0,sizeof(struct addrinfo));
@@ -51,7 +65,7 @@ int custom_socket(int family,const char port[]){
 	hints.ai_addr = NULL;
 	hints.ai_next = NULL;
 
-	if( getaddrinfo(NULL,port,&hints,&result) != 0){
+	if( getaddrinfo(localip,port,&hints,&result) != 0){
 		perror("getaddrinfo, ");
 		return -1;
 	}

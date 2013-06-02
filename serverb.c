@@ -165,7 +165,7 @@ int main(int argc,char *argv[]){
 	memset(&icp,0,sizeof(struct ICP));
 
 	/* Create udp socket. AF_INET,AF_INET6 or AF_UNSPEC */	
-	if( (sfd = custom_socket(AF_INET,argv[0])) == -1){
+	if( (sfd = custom_socket(AF_INET,argv[0],argv[2])) == -1){
 		raise(SIGUSR1);
 	}
 	
