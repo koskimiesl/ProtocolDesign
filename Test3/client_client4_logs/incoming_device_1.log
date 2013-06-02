@@ -1,0 +1,17 @@
+recv_ts: 1370198238.75	sensor_ts: 1370198238.74	delay: 0.01 s.		seq_number: 27		data: ON
+recv_ts: 1370198241.16	sensor_ts: 1370198240.16	delay: 1.00 s.		seq_number: 28		data: OFF
+recv_ts: 1370198244.04	sensor_ts: 1370198243.36	delay: 0.68 s.		seq_number: 29		data: ON
+recv_ts: 1370198248.04	sensor_ts: 1370198247.41	delay: 0.63 s.		seq_number: 30		data: OFF
+recv_ts: 1370198251.15	sensor_ts: 1370198250.13	delay: 1.02 s.		seq_number: 31		data: ON
+recv_ts: 1370198251.22	sensor_ts: 1370198251.22	delay: 0.00 s.		seq_number: 32		data: ON
+recv_ts: 1370198253.37	sensor_ts: 1370198253.37	delay: 0.00 s.		seq_number: 33		data: OFF
+recv_ts: 1370198258.22	sensor_ts: 1370198258.21	delay: 0.01 s.		seq_number: 34		data: OFF
+recv_ts: 1370198258.50	sensor_ts: 1370198258.50	delay: 0.00 s.		seq_number: 35		data: OFF
+recv_ts: 1370198261.43	sensor_ts: 1370198261.43	delay: 0.00 s.		seq_number: 36		data: OFF
+recv_ts: 1370198265.95	sensor_ts: 1370198265.95	delay: 0.00 s.		seq_number: 37		data: ON
+recv_ts: 1370198269.95	sensor_ts: 1370198269.94	delay: 0.01 s.		seq_number: 38		data: ON
+recv_ts: 1370198270.83	sensor_ts: 1370198270.83	delay: 0.00 s.		seq_number: 39		data: OFF
+recv_ts: 1370198272.02	sensor_ts: 1370198271.97	delay: 0.05 s.		seq_number: 40		data: ON
+recv_ts: 1370198276.78	sensor_ts: 1370198276.78	delay: 0.00 s.		seq_number: 41		data: ON
+recv_ts: 1370198278.61	sensor_ts: 1370198278.60	delay: 0.01 s.		seq_number: 42		data: ON
+recv_ts: 1370198279.40	sensor_ts: 1370198279.39	delay: 0.01 s.		seq_number: 43		data: ON
