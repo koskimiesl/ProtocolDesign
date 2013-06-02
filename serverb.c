@@ -8,7 +8,7 @@ void signalhandler(int signo){
 }
 
 /* Create a unix socket and connect to server (for each client) */
-int create_connect(){
+int create_connect(char * n){
 	int ufd,length;
 	struct sockaddr_un remote;
 	
@@ -19,7 +19,7 @@ int create_connect(){
 
 	memset(&remote,0,sizeof(struct sockaddr_un));
 	remote.sun_family = AF_UNIX;	
-	strcpy(remote.sun_path, SOCK_PATH);
+	strcpy(remote.sun_path,n);
 	length = strlen(remote.sun_path) + sizeof(remote.sun_family);
 	
 	if( connect(ufd,(struct sockaddr*)&remote,length) == -1){
@@ -27,7 +27,7 @@ int create_connect(){
 		close(ufd);
 		return -1;	
 	}
-	printf("XXXXXXXXXXXXXXXXXXXX: %d\n",setngetR(ufd));
+	setngetR(ufd);
 	return ufd;
 }
 
@@ -57,7 +57,7 @@ void sendPacket(struct State * state,int sfd){
 				memcpy(obuff,icp.buffer,8);
 				memcpy(obuff+8,queue->buffer,queue->size);
 				sendto(sfd,(char *)obuff,queue->size+8,0,&(state->addr),state->len);
-				//state->window = (state->window < 2000)?1000:(state->window)-(queue->size); 
+				state->window = (state->window)-(queue->size); 
 				(state->sentdown) = x;
 				cnt = true;
 				continue;
@@ -74,7 +74,6 @@ void sendAck(struct State * state,int sfd){
 	memset(&icp,0,sizeof(struct ICP));
 	updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state->seq,state->rack);
 	toBinary(&icp);
-	printf("Ack\n");
 	printICPOut(&icp);
 	memcpy(obuff,icp.buffer,8);
 	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
@@ -87,7 +86,6 @@ void sendIAck(struct State * state,unsigned short ack,int sfd){
 	memset(&icp,0,sizeof(struct ICP));
 	updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,0x0000,state->seq,ack);
 	toBinary(&icp);
-	printf("IAck\n");
 	printICPOut(&icp);
 	memcpy(obuff,icp.buffer,8);
 	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
@@ -110,23 +108,24 @@ void timeout(struct State * s,int sfd){
 			sendAck(state,sfd);
 		gettimeofday(&ct,NULL);
 
-		if( (ct.tv_sec - state->kt.tv_sec) > 50 ){
+		if( (ct.tv_sec - state->rkt.tv_sec) > 30 ){
 			/* Send Keepalive packet */
+			gettimeofday(&(state->rkt),NULL);
 			updateICP(&icp,0x00,0x00,0x00,0x00,0x01,0x00,0x0000,state->seq,0x0000);
 			toBinary(&icp);
 			printICPOut(&icp);
 			memcpy(obuff,icp.buffer,8);
 			sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
 		}
-
+		// if no acks arrive
+		state->window += 2;
 		list_for_each(idx,&(state->out.list)){
 			queue = list_entry(idx,struct Queue,list);
-			if( queue->sent && checktime(&(queue->st),&ct,0) ){
-				//state->window = (state->window < 2000)?2000:(state->window)-(2*queue->size); 
+			if( queue->sent && checktime(&(queue->st),&ct,0) && state->window > 2*(queue->size) ){
+				state->window = (state->window)-(2*queue->size); 
 				/* Update ICP */
 				updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,queue->size,queue->seq,state->rack);
 				toBinary(&icp);
-				printf("Resent\n");
 				printICPOut(&icp);
 				memcpy(obuff,icp.buffer,8);
 				memcpy(obuff+8,queue->buffer,queue->size);
@@ -217,6 +216,7 @@ int main(int argc,char *argv[]){
 							state->rack = icp.seq;
 							state->sentup = icp.seq;
 							gettimeofday(&(state->kt),NULL);
+							gettimeofday(&(state->rkt),NULL);
 							/* Send packet with start bit set */
 							updateICP(&icp,0x01,0x00,0x01,0x01,0x00,0x00,
 											0x0000,state->seq,state->rack);
@@ -235,11 +235,12 @@ int main(int argc,char *argv[]){
 					}
 					else {
 						gettimeofday(&(state->kt),NULL);
+						gettimeofday(&(state->rkt),NULL);
 						if(icp.endbit == 0x01 && icp.size == 00){
 						}
 						else if(icp.ackbit == 0x01 && icp.size == 0){
 							if(state->status == RC){
-								if( (temp = create_connect()) == -1)
+								if( (temp = create_connect(argv[1])) == -1)
 									continue; // Discuss,delete ??
 								state->fd = temp;
 								state->status = CT;
@@ -313,8 +314,6 @@ int main(int argc,char *argv[]){
 			else {
 				if( (state = findState_fd(&state_list,events[n].data.fd)) != NULL){
 					if( (rsize = recv(events[n].data.fd,(char *)ibuff,BUFF_SIZE,0)) > 0){
-						printf("%d\n",rsize);
-						printf("TotalUf: %d\n",Ufcount++);
 						t = (rsize-1)/1000;
 						for(k = 0; k <= t; k++){
 							state->seq = ((state->seq)==65535)?1:(state->seq)+1;
@@ -322,7 +321,6 @@ int main(int argc,char *argv[]){
 							tfrag = (k == t)?0x00:0x01;
 							memcpy(obuff,ibuff+k*1000,tsize);
 							addOutPacketToState(state,obuff,state->seq,tsize,tfrag);
-							printf("Totalf: %d\n",fcount++);
 							rsize-=1000;
 						}
 						/* Send packet,if network is congestion free */ 
@@ -339,7 +337,7 @@ int main(int argc,char *argv[]){
 		gettimeofday(&ct,NULL);
 		list_for_each_safe(pos,q,&(state_list.list)){
 			state=list_entry(pos,struct State,list);
-			if( (ct.tv_sec - state->kt.tv_sec) > 150 || state->clean ){
+			if( (ct.tv_sec - state->kt.tv_sec) > 120 || state->clean ){
 				list_del(pos);
 				releaseState(state);	
 				/* Remove fd from epoll */

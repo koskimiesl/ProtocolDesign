@@ -54,6 +54,8 @@ struct State {
 	struct Int racks; // individual
 	// sent to app layer
 	unsigned short sentup;
+	//
+	struct timeval rkt;
 	bool ackreq;
 	bool clean;
 	int fd;

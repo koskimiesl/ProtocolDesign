@@ -18,10 +18,13 @@
 #include<unistd.h>
 #include<errno.h>
 #include<fcntl.h>
+#include<fstream>
+#include<cstdio>
 
 #include"comm.hh"
 #include"screen.hh"
 #include"logging.hh"
+#include"helpers.hh"
 
 #define IDLEN 10
 #define IPLEN 20

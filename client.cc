@@ -1,12 +1,7 @@
 /* IoTPS Client */
-
-#include <fstream>
-#include <unistd.h>
-
 #include"client.hh"
-#include"helpers.hh"
 
-int connect(){
+int connect(char * n){
 	int ufd;
 	int length;
 	struct sockaddr_un remote;
@@ -16,7 +11,7 @@ int connect(){
 	}
 	memset(&remote,0,sizeof(struct sockaddr_un));
 	remote.sun_family = AF_UNIX;	
-	strcpy(remote.sun_path, SOCK_PATH);
+	strcpy(remote.sun_path,n);
 	length = strlen(remote.sun_path) + sizeof(remote.sun_family);
 	if( connect(ufd,(struct sockaddr*)&remote,length) == -1)
 		perror("connect");
@@ -27,6 +22,7 @@ int main(int argc,char *argv[]){
 	char ip[IPLEN],port[PORTLEN],id[IDLEN],lossp[LOSSLEN],lossq[LOSSLEN];
 	char buff[BUFF_SIZE];
 	char tbuff[BUFF_SIZE];
+	char fname[50];
 	char * p,*ptr;
 	int advance;
 	CommMessage text;	
@@ -42,7 +38,6 @@ int main(int argc,char *argv[]){
 	int ret;
 	int ufd;
 	size_t rsize;
-	int count = 0;
 	struct timespec t;
 	t.tv_sec = 1;
 	t.tv_nsec = 0;
@@ -73,7 +68,9 @@ int main(int argc,char *argv[]){
 				return -1;		
 		}
 	}
-
+	// tmpnam for unix socket
+	memset(fname,'\0',50);
+	tmpnam(fname);
 	// create directory for log files
 	std::string clientid(id);
 	std::string dirname = "client_" + clientid + "_logs";
@@ -85,21 +82,19 @@ int main(int argc,char *argv[]){
 		return -1;
 	}
 	else if(pid == 0){
-		if(execl("clientb",ip,port,lossp,lossq,(void *)0) == -1){
+		if(execl("clientb",ip,port,lossp,lossq,fname,(void *)0) == -1){
 			perror("execl");
 			return -1;		
 		}
 	}
 	
 	sleep(5);
-	if( (ufd = connect()) == -1)
+	if( (ufd = connect(fname)) == -1)
 		return -1;
-	std::stringstream mm;
-	mm << setngetR(ufd);
+	setngetR(ufd);
 	// kill process
 	// ncurses
 	Screen scr;
-	scr.status(mm.str().c_str());
 	while(1){
 		FD_ZERO(&rfds);
 		FD_SET(ufd,&rfds);
@@ -163,10 +158,6 @@ int main(int argc,char *argv[]){
 		else if(FD_ISSET(ufd,&rfds)){
 			//read
 			rsize = recv(ufd,buff,BUFF_SIZE,0);
-			std::stringstream mm;
-			mm << count;
-			scr.status(mm.str().c_str());
-			count++;			
 			if (rsize == 0)
 			{
 				if (close(ufd) == -1)
@@ -214,7 +205,7 @@ int main(int argc,char *argv[]){
 							std::cerr << "client was not previously subscribed to this sensor" << std::endl;
 					}
 					scr.addSList(prevList);
-					//scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
+					scr.status("Press 'R' to retrive list, 'S' to subscribe and 'U' to unsubscribe.");
 					req = NONE;
 				}
 				else if(cmd == "UPDATES"){	

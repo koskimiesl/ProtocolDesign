@@ -62,6 +62,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 			list_for_each_safe(pos,q,&(state->out.list)){
 				tmp = list_entry(pos,struct Queue,list);
 				if(tmp->seq == state->ack){
+					(state->window) += 2*(tmp->size);
 					list_del(pos);
 					free(tmp);
 					break;
@@ -74,6 +75,7 @@ void ackThis(struct State * state,unsigned short a,unsigned char ackbit,unsigned
 		list_for_each_safe(pos,q,&(state->out.list)){
 			tmp = list_entry(pos,struct Queue,list);
 			if(tmp->seq == a){
+				(state->window) += (tmp->size);
 				list_del(pos);
 				free(tmp);
 				break;	

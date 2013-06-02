@@ -50,7 +50,6 @@ void sendAck(struct State * state,int sfd){
 	memset(&icp,0,sizeof(struct ICP));
 	updateICP(&icp,0x00,0x00,0x01,0x01,0x00,0x00,0x0000,state->seq,state->rack);
 	toBinary(&icp);
-	printf("Ack\n");
 	printICPOut(&icp);
 	memcpy(obuff,icp.buffer,8);
 	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
@@ -63,7 +62,6 @@ void sendIAck(struct State * state,unsigned short ack,int sfd){
 	memset(&icp,0,sizeof(struct ICP));
 	updateICP(&icp,0x00,0x00,0x01,0x00,0x00,0x00,0x0000,state->seq,ack);
 	toBinary(&icp);
-	printf("IAck\n");
 	printICPOut(&icp);
 	memcpy(obuff,icp.buffer,8);
 	sendto(sfd,(char*)obuff,8,0,&(state->addr),state->len);
@@ -80,15 +78,17 @@ void timeout(struct State * state,int sfd){
 	if(state->ackreq)
 		sendAck(state,sfd);
 	gettimeofday(&ct,NULL);
+	//if no acks arrive	
+	state->window += 2;
 	list_for_each(pos,&(state->out.list)){
 		queue = list_entry(pos,struct Queue,list);
-		if(queue->sent && checktime(&(queue->st),&ct,0))
+		if(queue->sent && checktime(&(queue->st),&ct,0) && state->window > 2*(queue->size))
+			state->window = (state->window)-(2*queue->size); 			
 			/* Update ICP */
 			updateICP(&icp,0x00,0x00,0x01,0x01,0x00,queue->frag,
 								queue->size,queue->seq,state->rack);
 			state->ackreq = false;
 			toBinary(&icp);
-			printf("Resent\n");
 			printICPOut(&icp);
 			memcpy(obuff,icp.buffer,8);
 			memcpy(obuff+8,queue->buffer,queue->size);
@@ -99,7 +99,7 @@ void timeout(struct State * state,int sfd){
 
 
 /* Create a unix socket and listen */
-create_listen(){
+create_listen(char * n){
 	int ufd,length;
 	struct sockaddr_un local;
 
@@ -109,7 +109,7 @@ create_listen(){
 	}
 
 	local.sun_family = AF_UNIX;
-	strcpy(local.sun_path, SOCK_PATH);
+	strcpy(local.sun_path,n);
 	unlink(local.sun_path);
 	length = strlen(local.sun_path) + sizeof(local.sun_family);
 	
@@ -145,7 +145,8 @@ int main(int argc,char *argv[]){
 	struct Queue * queue;
 	enum Event event;
 	int fd;
-	if( (ufd = create_listen()) == -1){
+
+	if( (ufd = create_listen(argv[4])) == -1){
 		raise(SIGUSR1);		
 	}	
 	
@@ -368,7 +369,6 @@ int main(int argc,char *argv[]){
 									idx += queue->size;
 									if(!(queue->frag)){
 										code=send(nfd,fbuff,idx,0);									
-										printf("Count %d Code %d %u \n",count++,code,(unsigned int)idx);
 										idx = 0;				
 									}
 									list_del(pos);
@@ -416,13 +416,14 @@ int main(int argc,char *argv[]){
 					close(nfd);
 					close(ufd);
 					close(sfd);
+					close(fd);
 					releaseState(&state);
 					return 0;
 				}
 			}
 		}
 		gettimeofday(&ct,NULL);
-		if( (ct.tv_sec - state.kt.tv_sec) > 150){
+		if( (ct.tv_sec - state.kt.tv_sec) > 120){
 			/* Remove nfd */
 			ev.events = EPOLLIN;
 			ev.data.fd = nfd;
@@ -440,6 +441,7 @@ int main(int argc,char *argv[]){
 			close(nfd);
 			close(ufd);
 			close(sfd);
+			close(fd);
 			releaseState(&state);
 			return 0;
 		}

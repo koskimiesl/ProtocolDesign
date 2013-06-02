@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+#include <cstdio>
 
 #include "comm.hh"
 #include "helpers.hh"
@@ -23,6 +24,8 @@
 
 int main(int argc, char *argv[])
 {
+
+	char fname[50];
 	// parse command line options
 	char pport[PORTLEN], sport[PORTLEN]; // publish port, subscribe port
 	if (getServerCmdLOpts(argc, argv, pport, sport, PORTLEN) == -1)
@@ -31,6 +34,10 @@ int main(int argc, char *argv[])
 	// create directory for log files
 	if (createDir(SLOGDIR) == -1)
 		return -1;
+
+	// tmpnam for unix socket
+	memset(fname,'\0',50);
+	tmpnam(fname);
 
 	// start server binary protocol process
 	pid_t pid;
@@ -41,13 +48,13 @@ int main(int argc, char *argv[])
 	}
 	else if (pid == 0)
 	{
-		if (execl("serverb", sport, (void*)0) == -1)
+		if (execl("serverb", sport,fname, (void*)0) == -1)
 		{
 			error("execl");
 			return -1;
 		}
 	}
-
+	
 	// create publish socket
 	int pfd;
 	if ((pfd = custom_socket(AF_INET, pport)) == -1)
@@ -62,7 +69,7 @@ int main(int argc, char *argv[])
 	}
 
 	// bind and listen subscribe socket
-	if (bindAndListenUnixS(sfd, SOCKPATH) == -1)
+	if (bindAndListenUnixS(sfd, fname) == -1)
 		return -1;
 
 	fd_set rfds;
@@ -186,8 +193,6 @@ int main(int argc, char *argv[])
 										logServerOutgoing(SLOGDIR, clientid, sensormsg.deviceid, (char*)obuff + str.size(), sensormsg.datasize, ts, false, sensormsg.seqno);
 									}
 									wr = send((*it), (char*)obuff, sensormsg.datasize + str.size(), 0);
-									std::cout<<"UTotal"<<count++<<std::endl;				
-									std::cout<<"Size: "<< sensormsg.datasize+str.size()<<"\t"<<wr<<std::endl;
 								}
 							}
 						}
