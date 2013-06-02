@@ -44,7 +44,7 @@ int createDir(const std::string path)
 }
 
 /* Returns socket. */
-int custom_socket(int family,const char port[]){
+int custom_socket(int family,const char port[],const char localip[]){
 	struct addrinfo hints,*result,*rp;
 	int sfd; //status
 	memset(&hints,0,sizeof(struct addrinfo));
@@ -56,7 +56,7 @@ int custom_socket(int family,const char port[]){
 	hints.ai_addr = NULL;
 	hints.ai_next = NULL;
 
-	if( (sfd = getaddrinfo(NULL,port,&hints,&result)) != 0){
+	if( (sfd = getaddrinfo(localip,port,&hints,&result)) != 0){
 		std::cerr<<"custom_socket: getaddrinfo: "<<gai_strerror(sfd)<<std::endl;
 		sfd = -1;
 		return sfd;
@@ -129,7 +129,7 @@ int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, char * lo
 {
 	int n;
 	char opt;
-	while ((opt = getopt(argc, argv, "s:p:l")) != -1)
+	while ((opt = getopt(argc, argv, "s:p:l:")) != -1)
 	{
 		switch (opt)
 		{
@@ -137,7 +137,7 @@ int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, char * lo
 				strncpy(sport, optarg, PORTLEN);
 				break;
 			case 'l':
-				strncpy(localip, optarg, PORTLEN);
+				strncpy(localip, optarg, 50);
 				break;
 			case 'p':
 				strncpy(pport, optarg, PORTLEN);
@@ -151,7 +151,7 @@ int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, char * lo
 		}
 		n++;
 	}
-	if (n != 2)
+	if (n != 3)
 	{
 		std::cerr << "not enough command line options given" << std::endl;
 		return -1;

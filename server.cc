@@ -20,7 +20,7 @@
 #include "logging.hh"
 #include "sensormsg.hh"
 #include "server.hh"
-#define IPLEN 48
+#define IPLEN 50
 
 int main(int argc, char *argv[])
 {
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	}
 	else if (pid == 0)
 	{
-		if (execl("serverb", sport,fname,localip, (void*)0) == -1)
+		if (execl("serverb", sport,fname,localip,(void*)0) == -1)
 		{
 			error("execl");
 			return -1;
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	
 	// create publish socket
 	int pfd;
-	if ((pfd = custom_socket(AF_INET, pport)) == -1)
+	if ((pfd = custom_socket(AF_INET, pport,localip)) == -1)
 		return -1;
 
 	// create subscribe socket (UNIX domain)

@@ -18,7 +18,7 @@
 
 int bindAndListenUnixS(int fd, const std::string sockpath);
 int createDir(const std::string path);
-int custom_socket(int ,const char []);
+int custom_socket(int ,const char [],const char localip[]);
 int custom_socket_remote(const char [],const char [],struct sockaddr *);
 void error(std::string msg);
 int getServerCmdLOpts(int argc, char** argv, char* pport, char* sport, char * localip,size_t portlen);
